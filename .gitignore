@@ -1,0 +1,15 @@
+# 민감 정보 - 절대 GitHub에 올리지 않음
+google_credentials.json
+config.py
+
+# 불필요한 파일
+__pycache__/
+*.pyc
+cron.log
+test_*.py
+
+# 일회성 스크립트 (GitHub Actions에 불필요)
+update_titles.py
+match_titles.py
+update_by_shortcode.py
+verify_titles.py
