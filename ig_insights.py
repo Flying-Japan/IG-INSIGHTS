@@ -14,17 +14,26 @@ import sys
 import os
 import re
 
-# 같은 폴더의 config 불러오기
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import (
-    INSTAGRAM_BUSINESS_ACCOUNT_ID,
-    GRAPH_API_VERSION,
-    ACCESS_TOKEN,
-    GOOGLE_CREDENTIALS_FILE,
-    SPREADSHEET_ID,
-    APP_ID,
-    APP_SECRET,
-)
+# 설정 불러오기: GitHub Actions → 환경변수 / 로컬 → config.py
+if os.environ.get("GITHUB_ACTIONS"):
+    INSTAGRAM_BUSINESS_ACCOUNT_ID = os.environ.get("INSTAGRAM_BUSINESS_ACCOUNT_ID", "")
+    GRAPH_API_VERSION = os.environ.get("GRAPH_API_VERSION", "v24.0")
+    ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN", "")
+    GOOGLE_CREDENTIALS_FILE = "google_credentials.json"
+    SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID", "")
+    APP_ID = os.environ.get("APP_ID", "")
+    APP_SECRET = os.environ.get("APP_SECRET", "")
+else:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from config import (
+        INSTAGRAM_BUSINESS_ACCOUNT_ID,
+        GRAPH_API_VERSION,
+        ACCESS_TOKEN,
+        GOOGLE_CREDENTIALS_FILE,
+        SPREADSHEET_ID,
+        APP_ID,
+        APP_SECRET,
+    )
 
 BASE_URL = f"https://graph.facebook.com/{GRAPH_API_VERSION}"
 
