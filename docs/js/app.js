@@ -88,6 +88,16 @@ function renderOverview() {
   const top = posts.find(p => p.rank === 1);
   document.getElementById('kpi-top').textContent = top ? top.title : '-';
 
+  // Total stats
+  document.getElementById('kpi-total-reach').textContent = fmt(sum(posts.map(p => p.reach)));
+  document.getElementById('kpi-total-views').textContent = fmt(sum(posts.map(p => p.views)));
+  document.getElementById('kpi-total-likes').textContent = fmt(sum(posts.map(p => p.likes)));
+  document.getElementById('kpi-total-saves').textContent = fmt(sum(posts.map(p => p.saves)));
+  document.getElementById('kpi-total-shares').textContent = fmt(sum(posts.map(p => p.shares)));
+  document.getElementById('kpi-total-comments').textContent = fmt(sum(posts.map(p => p.comments)));
+  const totalEngagement = sum(posts.map(p => (p.likes || 0) + (p.saves || 0) + (p.shares || 0) + (p.comments || 0)));
+  document.getElementById('kpi-total-engagement').textContent = fmt(totalEngagement);
+
   // Follower trend chart (last 30 days from daily report or follower data)
   if (followers.length > 0) {
     new ApexCharts(document.getElementById('chart-follower-trend'), {

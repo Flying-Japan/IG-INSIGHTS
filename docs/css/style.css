@@ -108,6 +108,9 @@ body {
 .kpi-grid-4 {
   grid-template-columns: repeat(4, 1fr);
 }
+.kpi-grid-7 {
+  grid-template-columns: repeat(7, 1fr);
+}
 .kpi-card {
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -287,6 +290,7 @@ body {
 @media (max-width: 768px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .kpi-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .kpi-grid-7 { grid-template-columns: repeat(3, 1fr); }
   .chart-grid { grid-template-columns: 1fr; }
   .header { padding: 12px 16px; }
   .container { padding: 12px 16px; }
