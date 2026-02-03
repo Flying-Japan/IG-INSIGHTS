@@ -140,6 +140,67 @@ function renderOverview() {
 // TAB 2: Post Table
 // ══════════════════════════════════════════════════
 let postTable = null;
+let currentSortField = 'rank';
+
+// Column definitions factory
+const colDef = {
+  rank:       () => ({ title: '순위', field: '_rank', width: 60, hozAlign: 'center', sorter: 'number' }),
+  upload_date:() => ({ title: '업로드일', field: 'upload_date', width: 110, sorter: 'string' }),
+  media_type: () => ({ title: '유형', field: 'media_type', width: 80, hozAlign: 'center', formatter: cell => typeLabel(cell.getValue()) }),
+  category:   () => ({ title: '카테고리', field: 'category', width: 90, hozAlign: 'center' }),
+  title:      () => ({ title: '제목', field: 'title', minWidth: 180,
+    formatter: cell => {
+      const row = cell.getRow().getData();
+      return row.url ? `<a href="${row.url}" target="_blank" style="color:#F77737;text-decoration:none">${cell.getValue()}</a>` : cell.getValue();
+    }}),
+  reach:      () => ({ title: '도달', field: 'reach', width: 80, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
+  views:      () => ({ title: '조회수', field: 'views', width: 80, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
+  likes:      () => ({ title: '좋아요', field: 'likes', width: 70, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
+  saves:      () => ({ title: '저장', field: 'saves', width: 65, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
+  shares:     () => ({ title: '공유', field: 'shares', width: 65, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
+  comments:   () => ({ title: '댓글', field: 'comments', width: 60, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
+  engagement_rate: () => ({ title: '참여율', field: 'engagement_rate', width: 75, hozAlign: 'right', sorter: 'number',
+    formatter: cell => {
+      const v = cell.getValue();
+      if (v == null) return '-';
+      const color = v >= 5 ? '#00c853' : v >= 3 ? '#ffd600' : '#9499b3';
+      return `<span style="color:${color}">${v.toFixed(1)}%</span>`;
+    }}),
+  composite_score: () => ({ title: '점수', field: 'composite_score', width: 65, hozAlign: 'right', sorter: 'number',
+    formatter: cell => { const v = cell.getValue(); return v != null ? v.toFixed(1) : '-'; }}),
+};
+
+// Default column order
+const defaultOrder = ['rank','upload_date','media_type','category','title','reach','views','likes','saves','shares','comments','engagement_rate','composite_score'];
+
+// Build columns with the sort-target field moved right after rank
+function buildColumns(sortField) {
+  const order = [...defaultOrder];
+  // Move the active sort field right after rank (position index 1) if it's a metric
+  const metricsFields = ['reach','views','likes','saves','shares','comments','engagement_rate'];
+  if (metricsFields.includes(sortField)) {
+    const idx = order.indexOf(sortField);
+    if (idx > 1) {
+      order.splice(idx, 1);
+      order.splice(1, 0, sortField); // after rank
+    }
+  }
+  return order.map(key => colDef[key]());
+}
+
+// Recalculate rank based on sort field
+function recalcRankedData(posts, sortField, sortDir) {
+  const sorted = [...posts];
+  if (sortField === 'rank') {
+    // Use original composite rank
+    sorted.sort((a, b) => (a.rank || 999) - (b.rank || 999));
+  } else if (sortField === 'upload_date') {
+    sorted.sort((a, b) => sortDir === 'desc' ? b.upload_date.localeCompare(a.upload_date) : a.upload_date.localeCompare(b.upload_date));
+  } else {
+    sorted.sort((a, b) => sortDir === 'desc' ? (b[sortField] || 0) - (a[sortField] || 0) : (a[sortField] || 0) - (b[sortField] || 0));
+  }
+  return sorted.map((p, i) => ({ ...p, _rank: i + 1 }));
+}
 
 function renderPostTable() {
   const { posts } = DATA;
@@ -153,53 +214,26 @@ function renderPostTable() {
     catSelect.appendChild(opt);
   });
 
+  // Initial data with original rank
+  const initialData = recalcRankedData(posts, 'rank', 'asc');
+
   postTable = new Tabulator('#post-table', {
-    data: posts,
+    data: initialData,
     layout: 'fitColumns',
     height: '600px',
     pagination: false,
-    initialSort: [{ column: 'rank', dir: 'asc' }],
-    columns: [
-      { title: '순위', field: 'rank', width: 60, hozAlign: 'center', sorter: 'number' },
-      { title: '업로드일', field: 'upload_date', width: 110, sorter: 'string' },
-      { title: '유형', field: 'media_type', width: 80, hozAlign: 'center',
-        formatter: cell => typeLabel(cell.getValue()) },
-      { title: '카테고리', field: 'category', width: 90, hozAlign: 'center' },
-      { title: '제목', field: 'title', minWidth: 180,
-        formatter: cell => {
-          const row = cell.getRow().getData();
-          return row.url ? `<a href="${row.url}" target="_blank" style="color:#F77737;text-decoration:none">${cell.getValue()}</a>` : cell.getValue();
-        }},
-      { title: '도달', field: 'reach', width: 80, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) },
-      { title: '조회수', field: 'views', width: 80, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) },
-      { title: '좋아요', field: 'likes', width: 70, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) },
-      { title: '저장', field: 'saves', width: 65, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) },
-      { title: '공유', field: 'shares', width: 65, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) },
-      { title: '댓글', field: 'comments', width: 60, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) },
-      { title: '참여율', field: 'engagement_rate', width: 75, hozAlign: 'right', sorter: 'number',
-        formatter: cell => {
-          const v = cell.getValue();
-          if (v == null) return '-';
-          const color = v >= 5 ? '#00c853' : v >= 3 ? '#ffd600' : '#9499b3';
-          return `<span style="color:${color}">${v.toFixed(1)}%</span>`;
-        }},
-      { title: '점수', field: 'composite_score', width: 65, hozAlign: 'right', sorter: 'number',
-        formatter: cell => {
-          const v = cell.getValue();
-          return v != null ? v.toFixed(1) : '-';
-        }},
-    ],
+    columns: buildColumns('rank'),
   });
 
-  // Sort buttons
-  document.querySelectorAll('.sort-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const field = btn.dataset.sort;
-      const dir = btn.dataset.dir;
-      postTable.setSort(field, dir);
-    });
+  // Sort dropdown handler
+  document.getElementById('sort-select').addEventListener('change', function() {
+    const [field, dir] = this.value.split('|');
+    currentSortField = field;
+    const rankedData = recalcRankedData(DATA.posts, field, dir);
+    postTable.setColumns(buildColumns(field));
+    postTable.replaceData(rankedData);
+    // Re-apply active filters
+    applyFilters();
   });
 
   // Filters

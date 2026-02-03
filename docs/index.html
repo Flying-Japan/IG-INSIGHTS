@@ -85,15 +85,18 @@
     <!-- 2. Posts Tab -->
     <section id="tab-posts" class="tab-content">
       <div class="sort-bar">
-        <button class="sort-btn active" data-sort="rank" data-dir="asc">종합순위</button>
-        <button class="sort-btn" data-sort="upload_date" data-dir="desc">최신순</button>
-        <button class="sort-btn" data-sort="views" data-dir="desc">조회수순</button>
-        <button class="sort-btn" data-sort="reach" data-dir="desc">도달순</button>
-        <button class="sort-btn" data-sort="likes" data-dir="desc">좋아요순</button>
-        <button class="sort-btn" data-sort="saves" data-dir="desc">저장순</button>
-        <button class="sort-btn" data-sort="shares" data-dir="desc">공유순</button>
-        <button class="sort-btn" data-sort="comments" data-dir="desc">댓글순</button>
-        <button class="sort-btn" data-sort="engagement_rate" data-dir="desc">참여율순</button>
+        <label class="sort-label">정렬 기준</label>
+        <select id="sort-select" class="sort-dropdown">
+          <option value="rank|asc">종합순위</option>
+          <option value="upload_date|desc">최신순</option>
+          <option value="views|desc">조회수순</option>
+          <option value="reach|desc">도달순</option>
+          <option value="likes|desc">좋아요순</option>
+          <option value="saves|desc">저장순</option>
+          <option value="shares|desc">공유순</option>
+          <option value="comments|desc">댓글순</option>
+          <option value="engagement_rate|desc">참여율순</option>
+        </select>
       </div>
       <div class="filter-bar">
         <select id="filter-category">
