@@ -231,8 +231,10 @@ def format_date_ko(timestamp_str):
 
 
 def now_date_ko():
-    """현재 한국어 날짜"""
-    now = datetime.now()
+    """현재 한국어 날짜 (항상 한국 시간 기준)"""
+    from datetime import timezone, timedelta
+    KST = timezone(timedelta(hours=9))
+    now = datetime.now(KST)
     return f"{now.strftime('%y.%m.%d')}({WEEKDAYS_KO[now.weekday()]})"
 
 
