@@ -1,0 +1,30 @@
+[
+  {
+    "date": "26.01.30(금)",
+    "followers": 6443,
+    "following": 760,
+    "daily_change": 0,
+    "cumulative_change": 0
+  },
+  {
+    "date": "26.02.01(일)",
+    "followers": 6458,
+    "following": 760,
+    "daily_change": 15,
+    "cumulative_change": 0
+  },
+  {
+    "date": "26.02.02(월)",
+    "followers": 6473,
+    "following": 760,
+    "daily_change": null,
+    "cumulative_change": null
+  },
+  {
+    "date": "26.02.03(화)",
+    "followers": 6472,
+    "following": 760,
+    "daily_change": null,
+    "cumulative_change": null
+  }
+]

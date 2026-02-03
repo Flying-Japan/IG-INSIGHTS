@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IG 인사이트 대시보드</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator_midnight.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <h1>IG 인사이트 대시보드</h1>
+    </div>
+    <div class="header-right">
+      <span class="update-time" id="update-time">loading...</span>
+    </div>
+  </header>
+
+  <!-- Tab Navigation -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="overview">개요</button>
+    <button class="tab-btn" data-tab="posts">게시물</button>
+    <button class="tab-btn" data-tab="followers">팔로워</button>
+    <button class="tab-btn" data-tab="category">카테고리 분석</button>
+    <button class="tab-btn" data-tab="content">콘텐츠 분석</button>
+  </nav>
+
+  <!-- Loading -->
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>데이터 로딩 중...</p>
+  </div>
+
+  <!-- Tab Contents -->
+  <main class="container">
+
+    <!-- 1. Overview Tab -->
+    <section id="tab-overview" class="tab-content active">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">총 게시물</div>
+          <div class="kpi-value" id="kpi-posts">-</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">현재 팔로워</div>
+          <div class="kpi-value" id="kpi-followers">-</div>
+          <div class="kpi-sub" id="kpi-followers-change"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">평균 참여율</div>
+          <div class="kpi-value" id="kpi-engagement">-</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">평균 도달</div>
+          <div class="kpi-value" id="kpi-reach">-</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">총 좋아요</div>
+          <div class="kpi-value" id="kpi-likes">-</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">TOP 게시물</div>
+          <div class="kpi-value kpi-value-sm" id="kpi-top">-</div>
+        </div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-box">
+          <h3>팔로워 추이</h3>
+          <div id="chart-follower-trend"></div>
+        </div>
+        <div class="chart-box">
+          <h3>콘텐츠 유형 분포</h3>
+          <div id="chart-type-dist"></div>
+        </div>
+        <div class="chart-box full-width">
+          <h3>일별 도달 & 참여</h3>
+          <div id="chart-daily-reach"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Posts Tab -->
+    <section id="tab-posts" class="tab-content">
+      <div class="sort-bar">
+        <button class="sort-btn active" data-sort="rank" data-dir="asc">종합순위</button>
+        <button class="sort-btn" data-sort="upload_date" data-dir="desc">최신순</button>
+        <button class="sort-btn" data-sort="views" data-dir="desc">조회수순</button>
+        <button class="sort-btn" data-sort="reach" data-dir="desc">도달순</button>
+        <button class="sort-btn" data-sort="likes" data-dir="desc">좋아요순</button>
+        <button class="sort-btn" data-sort="saves" data-dir="desc">저장순</button>
+        <button class="sort-btn" data-sort="shares" data-dir="desc">공유순</button>
+        <button class="sort-btn" data-sort="comments" data-dir="desc">댓글순</button>
+        <button class="sort-btn" data-sort="engagement_rate" data-dir="desc">참여율순</button>
+      </div>
+      <div class="filter-bar">
+        <select id="filter-category">
+          <option value="">전체 카테고리</option>
+        </select>
+        <select id="filter-type">
+          <option value="">전체 유형</option>
+          <option value="CAROUSEL_ALBUM">캐러셀</option>
+          <option value="VIDEO">릴스/영상</option>
+          <option value="IMAGE">이미지</option>
+        </select>
+        <input type="text" id="filter-search" placeholder="제목 검색...">
+      </div>
+      <div id="post-table"></div>
+    </section>
+
+    <!-- 3. Followers Tab -->
+    <section id="tab-followers" class="tab-content">
+      <div class="kpi-grid kpi-grid-4">
+        <div class="kpi-card">
+          <div class="kpi-label">총 성장</div>
+          <div class="kpi-value" id="kpi-total-growth">-</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">일평균 성장</div>
+          <div class="kpi-value" id="kpi-avg-growth">-</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">최고 성장일</div>
+          <div class="kpi-value kpi-value-sm" id="kpi-best-day">-</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">현재 팔로워</div>
+          <div class="kpi-value" id="kpi-current-followers">-</div>
+        </div>
+      </div>
+      <div class="chart-box">
+        <h3>팔로워 추이 (전체)</h3>
+        <div id="chart-follower-full"></div>
+      </div>
+      <div class="chart-box">
+        <h3>일별 팔로워 변화</h3>
+        <div id="chart-follower-change"></div>
+      </div>
+    </section>
+
+    <!-- 4. Category Tab -->
+    <section id="tab-category" class="tab-content">
+      <div class="insight-box" id="category-insights"></div>
+      <div class="chart-grid">
+        <div class="chart-box">
+          <h3>카테고리별 평균 참여율</h3>
+          <div id="chart-cat-engagement"></div>
+        </div>
+        <div class="chart-box">
+          <h3>카테고리별 평균 도달</h3>
+          <div id="chart-cat-reach"></div>
+        </div>
+      </div>
+      <div class="chart-box">
+        <h3>카테고리별 평균 저장/공유</h3>
+        <div id="chart-cat-save-share"></div>
+      </div>
+      <div class="table-box">
+        <h3>카테고리 요약</h3>
+        <div id="cat-summary-table"></div>
+      </div>
+    </section>
+
+    <!-- 5. Content Analysis Tab -->
+    <section id="tab-content" class="tab-content">
+      <div class="insight-box" id="content-insights"></div>
+      <div class="chart-grid">
+        <div class="chart-box">
+          <h3>콘텐츠 유형별 성과 비교</h3>
+          <div id="chart-content-compare"></div>
+        </div>
+        <div class="chart-box">
+          <h3>도달 vs 참여율</h3>
+          <div id="chart-scatter"></div>
+        </div>
+      </div>
+      <div class="table-box">
+        <h3>TOP 10 게시물</h3>
+        <div id="top10-table"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
