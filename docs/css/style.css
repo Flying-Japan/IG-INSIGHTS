@@ -286,6 +286,58 @@ body {
   border-right: 1px solid rgba(46,50,71,0.3) !important;
 }
 
+/* ── Post Diagnosis Modal ── */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-content {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 28px; max-width: 600px; width: 90%;
+  max-height: 80vh; overflow-y: auto; position: relative;
+}
+.modal-close {
+  position: absolute; top: 12px; right: 16px;
+  background: none; border: none; color: var(--text2);
+  font-size: 24px; cursor: pointer;
+}
+.modal-close:hover { color: var(--text); }
+.modal-title {
+  font-size: 16px; font-weight: 700; color: var(--accent3);
+  margin-bottom: 8px; padding-right: 30px;
+}
+.modal-meta {
+  font-size: 12px; color: var(--text2); margin-bottom: 16px;
+}
+.modal-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; margin-bottom: 20px;
+}
+.modal-stat {
+  background: var(--bg3); border-radius: 8px; padding: 10px;
+  text-align: center;
+}
+.modal-stat-label { font-size: 11px; color: var(--text2); margin-bottom: 3px; }
+.modal-stat-value { font-size: 16px; font-weight: 700; }
+.modal-stat-sub { font-size: 10px; margin-top: 2px; }
+.modal-diagnosis { display: flex; flex-direction: column; gap: 10px; }
+.diag-item {
+  background: var(--bg3); border-radius: 8px; padding: 12px 14px;
+  border-left: 3px solid var(--border);
+}
+.diag-item.good { border-left-color: var(--green); }
+.diag-item.warn { border-left-color: var(--accent3); }
+.diag-item.bad { border-left-color: var(--red); }
+.diag-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.diag-item.good .diag-label { color: var(--green); }
+.diag-item.warn .diag-label { color: var(--accent3); }
+.diag-item.bad .diag-label { color: var(--red); }
+.diag-text { font-size: 13px; color: var(--text); line-height: 1.6; }
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }

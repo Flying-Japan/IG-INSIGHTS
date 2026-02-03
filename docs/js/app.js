@@ -144,6 +144,87 @@ function renderOverview() {
       tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) } },
     }).render();
   }
+
+  // ── Marketer KPIs ──
+  const saveRates = posts.map(p => p.save_rate).filter(v => v != null);
+  const shareRates = posts.map(p => p.share_rate).filter(v => v != null);
+  document.getElementById('kpi-avg-save-rate').textContent = fmtPct(avg(saveRates));
+  document.getElementById('kpi-avg-share-rate').textContent = fmtPct(avg(shareRates));
+
+  const avgEngPerPost = posts.length ? Math.round(sum(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0))) / posts.length) : 0;
+  document.getElementById('kpi-avg-engagement-per-post').textContent = fmt(avgEngPerPost);
+
+  const reachRate = latestFollowers ? (avg(reaches) / latestFollowers * 100) : 0;
+  document.getElementById('kpi-reach-rate').textContent = fmtPct(reachRate);
+
+  // ── Day of Week chart ──
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+  const dayMap = {};
+  dayNames.forEach(d => { dayMap[d] = { reach: [], eng: [], saves: [], count: 0 }; });
+  posts.forEach(p => {
+    const m = p.upload_date.match(/\((.)\)/);
+    if (m && dayMap[m[1]]) {
+      const d = dayMap[m[1]];
+      d.count++;
+      if (p.reach) d.reach.push(p.reach);
+      if (p.engagement_rate) d.eng.push(p.engagement_rate);
+      if (p.saves) d.saves.push(p.saves);
+    }
+  });
+  const dayStats = dayNames.map(d => ({
+    day: d, count: dayMap[d].count,
+    avgReach: avg(dayMap[d].reach), avgEng: avg(dayMap[d].eng), avgSaves: avg(dayMap[d].saves),
+  }));
+
+  new ApexCharts(document.getElementById('chart-day-of-week'), {
+    ...chartTheme,
+    series: [
+      { name: '평균 도달', data: dayStats.map(d => Math.round(d.avgReach)) },
+      { name: '평균 저장', data: dayStats.map(d => Math.round(d.avgSaves)) },
+    ],
+    chart: { ...chartTheme.chart, type: 'bar', height: 280 },
+    xaxis: { categories: dayStats.map(d => d.day + '요일 (' + d.count + '개)') },
+    yaxis: [
+      { title: { text: '도달', style: { color: '#9499b3' } }, labels: { formatter: v => fmt(v) } },
+      { opposite: true, title: { text: '저장', style: { color: '#9499b3' } }, labels: { formatter: v => fmt(v) } },
+    ],
+    colors: [chartColors.blue, chartColors.green],
+    plotOptions: { bar: { borderRadius: 3, columnWidth: '55%' } },
+    grid: chartTheme.grid,
+    tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) } },
+  }).render();
+
+  // ── Carousel vs Reels comparison ──
+  const typeCompare = {};
+  posts.forEach(p => {
+    const t = p.media_type || 'OTHER';
+    if (!typeCompare[t]) typeCompare[t] = { reach: [], eng: [], saves: [], shares: [], saveRate: [], shareRate: [] };
+    const tc = typeCompare[t];
+    if (p.reach) tc.reach.push(p.reach);
+    if (p.engagement_rate) tc.eng.push(p.engagement_rate);
+    if (p.saves) tc.saves.push(p.saves);
+    if (p.shares) tc.shares.push(p.shares);
+    if (p.save_rate) tc.saveRate.push(p.save_rate);
+    if (p.share_rate) tc.shareRate.push(p.share_rate);
+  });
+  const tcLabels = Object.keys(typeCompare).map(typeLabel);
+  const tcKeys = Object.keys(typeCompare);
+
+  new ApexCharts(document.getElementById('chart-type-compare'), {
+    ...chartTheme,
+    series: [
+      { name: '평균 참여율', data: tcKeys.map(k => +avg(typeCompare[k].eng).toFixed(1)) },
+      { name: '평균 저장율', data: tcKeys.map(k => +avg(typeCompare[k].saveRate).toFixed(1)) },
+      { name: '평균 공유율', data: tcKeys.map(k => +avg(typeCompare[k].shareRate).toFixed(1)) },
+    ],
+    chart: { ...chartTheme.chart, type: 'bar', height: 280 },
+    xaxis: { categories: tcLabels },
+    yaxis: { labels: { formatter: v => v + '%' } },
+    colors: [chartColors.accent, chartColors.green, chartColors.orange],
+    plotOptions: { bar: { borderRadius: 3, columnWidth: '50%' } },
+    grid: chartTheme.grid,
+    tooltip: { ...chartTheme.tooltip, y: { formatter: v => v + '%' } },
+  }).render();
 }
 
 // ══════════════════════════════════════════════════
@@ -233,6 +314,12 @@ function renderPostTable() {
     height: '600px',
     pagination: false,
     columns: buildColumns('rank'),
+  });
+
+  // Row click → diagnosis modal
+  postTable.on('rowClick', (e, row) => {
+    if (e.target.tagName === 'A') return; // don't intercept link clicks
+    showPostModal(row.getData());
   });
 
   // Sort dropdown handler
@@ -536,6 +623,149 @@ function renderContent() {
     ],
   });
 }
+
+// ══════════════════════════════════════════════════
+// Post Diagnosis Modal
+// ══════════════════════════════════════════════════
+function getPercentile(value, arr) {
+  const sorted = [...arr].sort((a, b) => a - b);
+  const idx = sorted.findIndex(v => v >= value);
+  return idx === -1 ? 100 : Math.round((idx / sorted.length) * 100);
+}
+
+function diagnosePost(post) {
+  const { posts } = DATA;
+  const allReach = posts.map(p => p.reach).filter(v => v != null);
+  const allEng = posts.map(p => p.engagement_rate).filter(v => v != null);
+  const allSaves = posts.map(p => p.saves).filter(v => v != null);
+  const allShares = posts.map(p => p.shares).filter(v => v != null);
+  const allComments = posts.map(p => p.comments).filter(v => v != null);
+  const allViews = posts.map(p => p.views).filter(v => v != null);
+  const allSaveRate = posts.map(p => p.save_rate).filter(v => v != null);
+  const allShareRate = posts.map(p => p.share_rate).filter(v => v != null);
+
+  const avgReach = avg(allReach);
+  const avgEng = avg(allEng);
+  const avgSaveR = avg(allSaveRate);
+  const avgShareR = avg(allShareRate);
+  const avgSaves_ = avg(allSaves);
+  const avgShares_ = avg(allShares);
+  const avgComments_ = avg(allComments);
+
+  const reachPct = 100 - getPercentile(post.reach || 0, allReach);
+  const engPct = 100 - getPercentile(post.engagement_rate || 0, allEng);
+  const savePct = 100 - getPercentile(post.saves || 0, allSaves);
+  const sharePct = 100 - getPercentile(post.shares || 0, allShares);
+
+  const diags = [];
+
+  // Reach analysis
+  if (reachPct <= 5) {
+    diags.push({ type: 'good', label: '도달 최상위', text: `도달 ${fmt(post.reach)} — 상위 ${reachPct}% (평균의 ${(post.reach/avgReach).toFixed(1)}배). 알고리즘이 강하게 추천한 콘텐츠입니다.` });
+  } else if (reachPct <= 20) {
+    diags.push({ type: 'good', label: '도달 우수', text: `도달 ${fmt(post.reach)} — 상위 ${reachPct}% (평균 ${fmt(Math.round(avgReach))}). 탐색 탭 노출 가능성이 높습니다.` });
+  } else if (reachPct >= 70) {
+    diags.push({ type: 'bad', label: '도달 부족', text: `도달 ${fmt(post.reach)} — 하위 ${100-reachPct}% (평균 ${fmt(Math.round(avgReach))}). 해시태그, 후킹 이미지, 업로드 시간대를 점검해보세요.` });
+  }
+
+  // Engagement analysis
+  if (post.engagement_rate != null) {
+    if (post.engagement_rate >= avgEng * 2) {
+      diags.push({ type: 'good', label: '참여율 탁월', text: `참여율 ${post.engagement_rate.toFixed(1)}% — 평균(${avgEng.toFixed(1)}%)의 ${(post.engagement_rate/avgEng).toFixed(1)}배. 팔로워의 공감을 크게 이끈 콘텐츠입니다.` });
+    } else if (post.engagement_rate < avgEng * 0.5) {
+      diags.push({ type: 'bad', label: '참여율 저조', text: `참여율 ${post.engagement_rate.toFixed(1)}% — 평균(${avgEng.toFixed(1)}%)의 절반 이하. CTA 문구나 질문형 캡션 추가를 권장합니다.` });
+    }
+  }
+
+  // Save rate (content value)
+  if (post.save_rate != null) {
+    if (post.save_rate >= avgSaveR * 2) {
+      diags.push({ type: 'good', label: '저장율 높음 (콘텐츠 가치)', text: `저장율 ${post.save_rate.toFixed(1)}% — 평균(${avgSaveR.toFixed(1)}%)의 ${(post.save_rate/avgSaveR).toFixed(1)}배. 정보성/실용성이 뛰어난 콘텐츠입니다. 이 유형을 더 만들어보세요.` });
+    } else if (post.save_rate < avgSaveR * 0.3) {
+      diags.push({ type: 'warn', label: '저장율 낮음', text: `저장율 ${post.save_rate.toFixed(1)}% — 평균(${avgSaveR.toFixed(1)}%)보다 낮습니다. 정보 요약, 꿀팁, 체크리스트 등 "저장할 만한" 요소를 추가해보세요.` });
+    }
+  }
+
+  // Share rate (viral potential)
+  if (post.share_rate != null) {
+    if (post.share_rate >= avgShareR * 2) {
+      diags.push({ type: 'good', label: '공유율 높음 (바이럴)', text: `공유율 ${post.share_rate.toFixed(1)}% — 평균(${avgShareR.toFixed(1)}%)의 ${(post.share_rate/avgShareR).toFixed(1)}배. 바이럴 잠재력이 큰 콘텐츠입니다.` });
+    } else if (post.share_rate < avgShareR * 0.3) {
+      diags.push({ type: 'warn', label: '공유율 낮음', text: `공유율 ${post.share_rate.toFixed(1)}% — "친구 태그해!" 같은 공유 유도 CTA를 추가해보세요.` });
+    }
+  }
+
+  // High reach but low engagement = hook problem
+  if (reachPct <= 20 && engPct >= 60) {
+    diags.push({ type: 'warn', label: '도달 대비 참여 부족', text: `도달은 높지만 참여가 낮습니다. 많은 사람에게 노출되었지만 반응을 이끌지 못했습니다. 캡션/CTA를 강화하거나, 댓글 유도 질문을 넣어보세요.` });
+  }
+
+  // Low reach but high engagement = loyal audience
+  if (reachPct >= 60 && engPct <= 20) {
+    diags.push({ type: 'warn', label: '참여는 높지만 노출 부족', text: `기존 팔로워의 반응은 좋지만 새로운 사람에게 도달하지 못했습니다. 트렌딩 해시태그나 릴스 형식 활용을 고려해보세요.` });
+  }
+
+  // Comments analysis
+  if (post.comments != null && post.comments >= avgComments_ * 3) {
+    diags.push({ type: 'good', label: '댓글 활발', text: `댓글 ${fmt(post.comments)}개 — 평균(${fmt(Math.round(avgComments_))})의 ${(post.comments/avgComments_).toFixed(1)}배. 소통이 활발한 게시물입니다.` });
+  }
+
+  // Overall summary
+  const scores = [];
+  if (reachPct <= 30) scores.push('도달');
+  if (engPct <= 30) scores.push('참여');
+  if (savePct <= 30) scores.push('저장');
+  if (sharePct <= 30) scores.push('공유');
+
+  if (scores.length >= 3) {
+    diags.unshift({ type: 'good', label: '종합 우수 게시물', text: `${scores.join(', ')} 모두 상위권입니다. 이 게시물의 주제/형식을 참고하여 유사 콘텐츠를 제작해보세요.` });
+  }
+
+  if (diags.length === 0) {
+    diags.push({ type: 'warn', label: '평균 수준', text: '대부분의 지표가 평균 범위 내에 있습니다. 눈에 띄는 강점이나 약점이 없는 안정적인 게시물입니다.' });
+  }
+
+  return { reachPct, engPct, savePct, sharePct, diags };
+}
+
+function showPostModal(post) {
+  const { reachPct, engPct, savePct, sharePct, diags } = diagnosePost(post);
+
+  document.getElementById('modal-title').textContent = post.title || '제목 없음';
+  document.getElementById('modal-meta').textContent =
+    `${post.upload_date} · ${typeLabel(post.media_type)} · ${post.category || '미분류'} · 종합순위 ${post.rank || '-'}위`;
+
+  const statColor = pct => pct <= 20 ? 'var(--green)' : pct >= 70 ? 'var(--red)' : 'var(--text)';
+
+  document.getElementById('modal-stats').innerHTML = [
+    { label: '도달', value: fmt(post.reach), sub: `상위 ${reachPct}%`, color: statColor(reachPct) },
+    { label: '참여율', value: fmtPct(post.engagement_rate), sub: `상위 ${engPct}%`, color: statColor(engPct) },
+    { label: '저장', value: fmt(post.saves), sub: `상위 ${savePct}%`, color: statColor(savePct) },
+    { label: '공유', value: fmt(post.shares), sub: `상위 ${sharePct}%`, color: statColor(sharePct) },
+  ].map(s => `
+    <div class="modal-stat">
+      <div class="modal-stat-label">${s.label}</div>
+      <div class="modal-stat-value" style="color:${s.color}">${s.value}</div>
+      <div class="modal-stat-sub" style="color:${s.color}">${s.sub}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('modal-diagnosis').innerHTML = diags.map(d => `
+    <div class="diag-item ${d.type}">
+      <div class="diag-label">${d.label}</div>
+      <div class="diag-text">${d.text}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('post-modal').style.display = 'flex';
+}
+
+// Close modal
+document.addEventListener('click', e => {
+  if (e.target.id === 'post-modal' || e.target.id === 'modal-close') {
+    document.getElementById('post-modal').style.display = 'none';
+  }
+});
 
 // ── Start ──
 document.addEventListener('DOMContentLoaded', init);
