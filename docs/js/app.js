@@ -173,16 +173,16 @@ const colDef = {
 // Default column order
 const defaultOrder = ['rank','upload_date','media_type','category','title','reach','views','likes','saves','shares','comments','engagement_rate','composite_score'];
 
-// Build columns with the sort-target field moved right after rank
+// Build columns with the sort-target field moved right after title
 function buildColumns(sortField) {
   const order = [...defaultOrder];
-  // Move the active sort field right after rank (position index 1) if it's a metric
   const metricsFields = ['reach','views','likes','saves','shares','comments','engagement_rate'];
   if (metricsFields.includes(sortField)) {
     const idx = order.indexOf(sortField);
-    if (idx > 1) {
+    const titleIdx = order.indexOf('title');
+    if (idx > titleIdx + 1) {
       order.splice(idx, 1);
-      order.splice(1, 0, sortField); // after rank
+      order.splice(titleIdx + 1, 0, sortField); // right after title
     }
   }
   return order.map(key => colDef[key]());
