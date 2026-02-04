@@ -331,90 +331,139 @@ function recalcRankedData(posts, sortField, sortDir) {
 
 // ── Day-of-Week Chart ──
 let dowChartInstance = null;
+
+// upload_date "26.02.03(화)" → Date 객체
+function parseUploadDate(str) {
+  const m = str.match(/(\d{2})\.(\d{2})\.(\d{2})/);
+  return m ? new Date(2000 + parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])) : null;
+}
+
+function filterByDays(posts, days) {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  return posts.filter(p => { const d = parseUploadDate(p.upload_date); return d && d >= cutoff; });
+}
+
 function renderDowChart(mode) {
   const { posts } = DATA;
-  const dayOrder = ['월', '화', '수', '목', '금', '토', '일'];
-
-  // 최근 4주 필터: upload_date "26.02.03(화)" → Date 변환
-  let filtered = posts;
-  if (mode === 'recent') {
-    const now = new Date();
-    const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
-    filtered = posts.filter(p => {
-      const m = p.upload_date.match(/(\d{2})\.(\d{2})\.(\d{2})/);
-      if (!m) return false;
-      const d = new Date(2000 + parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
-      return d >= fourWeeksAgo;
-    });
-  }
-
-  const dayMap = {};
-  dayOrder.forEach(d => { dayMap[d] = { reach: [], eng: [], count: 0 }; });
-  filtered.forEach(p => {
-    const m = p.upload_date.match(/\((.)\)/);
-    if (m && dayMap[m[1]]) {
-      dayMap[m[1]].count++;
-      if (p.reach) dayMap[m[1]].reach.push(p.reach);
-      if (p.engagement_rate) dayMap[m[1]].eng.push(p.engagement_rate);
-    }
-  });
-
-  const stats = dayOrder.map(d => ({
-    day: d, count: dayMap[d].count,
-    avgReach: avg(dayMap[d].reach),
-    avgEng: avg(dayMap[d].eng),
-  }));
-
-  // 최고 도달 요일 강조 색상
-  const maxReach = Math.max(...stats.map(s => s.avgReach));
-  const reachColors = stats.map(s => s.avgReach === maxReach && s.count > 0 ? chartColors.accent3 : chartColors.blue);
 
   if (dowChartInstance) dowChartInstance.destroy();
 
-  dowChartInstance = new ApexCharts(document.getElementById('chart-daily-reach'), {
-    ...chartTheme,
-    series: [
-      { name: '평균 도달', type: 'bar', data: stats.map(s => Math.round(s.avgReach)) },
-      { name: '평균 참여율', type: 'line', data: stats.map(s => +s.avgEng.toFixed(1)) },
-    ],
-    chart: { ...chartTheme.chart, type: 'line', height: 300 },
-    xaxis: {
-      categories: stats.map(s => s.day + '요일'),
-      labels: { style: { fontSize: '12px' } },
-    },
-    yaxis: [
-      { title: { text: '평균 도달', style: { color: '#9499b3' } }, labels: { formatter: v => fmt(v) } },
-      { opposite: true, title: { text: '참여율(%)', style: { color: '#9499b3' } }, labels: { formatter: v => v.toFixed(1) + '%' }, min: 0 },
-    ],
-    colors: [chartColors.blue, chartColors.green],
-    plotOptions: { bar: { borderRadius: 4, columnWidth: '55%', distributed: false } },
-    stroke: { width: [0, 3] },
-    markers: { size: [0, 5] },
-    grid: chartTheme.grid,
-    tooltip: {
-      ...chartTheme.tooltip,
-      shared: true,
-      custom: ({ series, dataPointIndex }) => {
-        const s = stats[dataPointIndex];
-        return `<div style="padding:10px;font-size:12px">
-          <strong>${s.day}요일</strong> (${s.count}개 게시물)<br>
-          평균 도달: <b>${fmt(Math.round(s.avgReach))}</b><br>
-          평균 참여율: <b>${s.avgEng.toFixed(1)}%</b>
-        </div>`;
-      },
-    },
-    annotations: {
-      xaxis: [{
-        x: stats.reduce((best, s) => s.avgReach > best.avgReach && s.count > 0 ? s : best, stats[0]).day + '요일',
-        borderColor: chartColors.accent3,
-        label: {
-          text: '최적 업로드 요일',
-          style: { background: chartColors.accent3, color: '#fff', fontSize: '11px', padding: { left: 6, right: 6, top: 2, bottom: 2 } },
+  // "요일별" 모드: 최근 7일을 날짜별로 표시
+  if (mode === 'daily') {
+    const recent = filterByDays(posts, 7);
+    // 날짜별 그룹
+    const dateMap = {};
+    recent.forEach(p => {
+      const key = p.upload_date;
+      if (!dateMap[key]) dateMap[key] = { reach: [], eng: [], label: key };
+      if (p.reach) dateMap[key].reach.push(p.reach);
+      if (p.engagement_rate) dateMap[key].eng.push(p.engagement_rate);
+    });
+    const entries = Object.values(dateMap).sort((a, b) => a.label.localeCompare(b.label));
+    if (!entries.length) {
+      document.getElementById('chart-daily-reach').innerHTML = '<p style="text-align:center;color:var(--text2);padding:40px">최근 7일 데이터가 없습니다</p>';
+      return;
+    }
+
+    dowChartInstance = new ApexCharts(document.getElementById('chart-daily-reach'), {
+      ...chartTheme,
+      series: [
+        { name: '총 도달', type: 'bar', data: entries.map(e => sum(e.reach)) },
+        { name: '평균 참여율', type: 'line', data: entries.map(e => +avg(e.eng).toFixed(1)) },
+      ],
+      chart: { ...chartTheme.chart, type: 'line', height: 300 },
+      xaxis: { categories: entries.map(e => e.label), labels: { style: { fontSize: '11px' } } },
+      yaxis: [
+        { title: { text: '총 도달', style: { color: '#9499b3' } }, labels: { formatter: v => fmt(v) } },
+        { opposite: true, title: { text: '참여율(%)', style: { color: '#9499b3' } }, labels: { formatter: v => v.toFixed(1) + '%' }, min: 0 },
+      ],
+      colors: [chartColors.blue, chartColors.green],
+      plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
+      stroke: { width: [0, 3] },
+      markers: { size: [0, 5] },
+      grid: chartTheme.grid,
+      tooltip: {
+        ...chartTheme.tooltip, shared: true,
+        custom: ({ dataPointIndex }) => {
+          const e = entries[dataPointIndex];
+          return `<div style="padding:10px;font-size:12px">
+            <strong>${e.label}</strong> (${e.reach.length}개 게시물)<br>
+            총 도달: <b>${fmt(sum(e.reach))}</b><br>
+            평균 참여율: <b>${avg(e.eng).toFixed(1)}%</b>
+          </div>`;
         },
-      }],
-    },
-  });
-  dowChartInstance.render();
+      },
+    });
+    dowChartInstance.render();
+  } else {
+    // 요일별 평균 모드 (전체 / 최근1달 / 최근1주)
+    const dayOrder = ['월', '화', '수', '목', '금', '토', '일'];
+    let filtered = posts;
+    if (mode === 'month') filtered = filterByDays(posts, 30);
+    if (mode === 'week') filtered = filterByDays(posts, 7);
+
+    const dayMap = {};
+    dayOrder.forEach(d => { dayMap[d] = { reach: [], eng: [], count: 0 }; });
+    filtered.forEach(p => {
+      const m = p.upload_date.match(/\((.)\)/);
+      if (m && dayMap[m[1]]) {
+        dayMap[m[1]].count++;
+        if (p.reach) dayMap[m[1]].reach.push(p.reach);
+        if (p.engagement_rate) dayMap[m[1]].eng.push(p.engagement_rate);
+      }
+    });
+
+    const stats = dayOrder.map(d => ({
+      day: d, count: dayMap[d].count,
+      avgReach: avg(dayMap[d].reach), avgEng: avg(dayMap[d].eng),
+    }));
+
+    const modeLabel = { all: '전체', month: '최근 1달', week: '최근 1주' }[mode] || '';
+
+    dowChartInstance = new ApexCharts(document.getElementById('chart-daily-reach'), {
+      ...chartTheme,
+      series: [
+        { name: '평균 도달', type: 'bar', data: stats.map(s => Math.round(s.avgReach)) },
+        { name: '평균 참여율', type: 'line', data: stats.map(s => +s.avgEng.toFixed(1)) },
+      ],
+      chart: { ...chartTheme.chart, type: 'line', height: 300 },
+      xaxis: {
+        categories: stats.map(s => s.day + '요일'),
+        labels: { style: { fontSize: '12px' } },
+      },
+      yaxis: [
+        { title: { text: '평균 도달', style: { color: '#9499b3' } }, labels: { formatter: v => fmt(v) } },
+        { opposite: true, title: { text: '참여율(%)', style: { color: '#9499b3' } }, labels: { formatter: v => v.toFixed(1) + '%' }, min: 0 },
+      ],
+      colors: [chartColors.blue, chartColors.green],
+      plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
+      stroke: { width: [0, 3] },
+      markers: { size: [0, 5] },
+      grid: chartTheme.grid,
+      tooltip: {
+        ...chartTheme.tooltip, shared: true,
+        custom: ({ dataPointIndex }) => {
+          const s = stats[dataPointIndex];
+          return `<div style="padding:10px;font-size:12px">
+            <strong>${s.day}요일</strong> [${modeLabel}] (${s.count}개 게시물)<br>
+            평균 도달: <b>${fmt(Math.round(s.avgReach))}</b><br>
+            평균 참여율: <b>${s.avgEng.toFixed(1)}%</b>
+          </div>`;
+        },
+      },
+      annotations: {
+        xaxis: [{
+          x: stats.reduce((best, s) => s.avgReach > best.avgReach && s.count > 0 ? s : best, stats[0]).day + '요일',
+          borderColor: chartColors.accent3,
+          label: {
+            text: '최적 업로드 요일',
+            style: { background: chartColors.accent3, color: '#fff', fontSize: '11px', padding: { left: 6, right: 6, top: 2, bottom: 2 } },
+          },
+        }],
+      },
+    });
+    dowChartInstance.render();
+  }
 
   // 토글 버튼 활성화 상태
   document.querySelectorAll('#dow-toggle .toggle-btn').forEach(btn => {
