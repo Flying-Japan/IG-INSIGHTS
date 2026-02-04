@@ -2,9 +2,8 @@ name: Instagram Insights Daily Update
 
 on:
   schedule:
-    # 매일 한국시간 오전 9시 17분 (UTC 0시 17분) 실행
-    # 정각(0분)은 GitHub Actions에서 가장 혼잡 → 비정각으로 지연 최소화
-    - cron: '17 0 * * *'
+    # 매일 한국시간 오전 8시 17분 (UTC 23시 17분) 실행
+    - cron: '17 23 * * *'
   workflow_dispatch:  # 수동 실행 버튼
 
 concurrency:
