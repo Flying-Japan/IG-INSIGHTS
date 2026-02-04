@@ -381,8 +381,10 @@ function getWeeksInMonth(year, month) {
 }
 
 // 셀렉터 UI 업데이트
-function updateDowSelectors(mode) {
+function updateDowSelectors(mode, keepValues) {
   const container = document.getElementById('dow-selectors');
+  const prevYear = keepValues ? document.getElementById('dow-year')?.value : null;
+  const prevMonth = keepValues ? document.getElementById('dow-month')?.value : null;
   container.innerHTML = '';
   if (mode === 'all') return;
 
@@ -390,52 +392,61 @@ function updateDowSelectors(mode) {
   if (!yms.length) return;
 
   const latest = yms[0].split('-');
-  const defYear = parseInt(latest[0]), defMonth = parseInt(latest[1]);
-
-  // 년도/월 셀렉터 (월별, 주별, 일별 공통)
+  const defYear = prevYear || latest[0];
   const years = [...new Set(yms.map(ym => ym.split('-')[0]))];
+
+  // 년도 셀렉터
   const yearSel = document.createElement('select');
   yearSel.id = 'dow-year';
   years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y + '년'; yearSel.appendChild(o); });
-  yearSel.value = String(defYear);
+  yearSel.value = years.includes(defYear) ? defYear : years[0];
   container.appendChild(yearSel);
 
+  // 월 셀렉터
   const monthSel = document.createElement('select');
   monthSel.id = 'dow-month';
-  for (let m = 1; m <= 12; m++) {
-    const key = `${yearSel.value}-${String(m).padStart(2,'0')}`;
-    if (yms.includes(key)) {
-      const o = document.createElement('option'); o.value = m; o.textContent = m + '월'; monthSel.appendChild(o);
+  const populateMonths = () => {
+    monthSel.innerHTML = '';
+    for (let m = 1; m <= 12; m++) {
+      const key = `${yearSel.value}-${String(m).padStart(2,'0')}`;
+      if (yms.includes(key)) { const o = document.createElement('option'); o.value = m; o.textContent = m + '월'; monthSel.appendChild(o); }
     }
+  };
+  populateMonths();
+  if (prevMonth && [...monthSel.options].some(o => o.value === prevMonth)) {
+    monthSel.value = prevMonth;
+  } else {
+    // 기본: 해당 년도의 최신 월
+    const lastOpt = monthSel.options[monthSel.options.length - 1];
+    if (lastOpt) monthSel.value = lastOpt.value;
   }
-  monthSel.value = String(defMonth);
   container.appendChild(monthSel);
 
-  // 주별인 경우 주차 셀렉터 추가
-  if (mode === 'week') {
+  // 주별: 주차 셀렉터 추가
+  const addWeekSelector = () => {
+    const oldWeek = document.getElementById('dow-week');
+    if (oldWeek) oldWeek.remove();
+    if (mode !== 'week') return;
     const weeks = getWeeksInMonth(parseInt(yearSel.value), parseInt(monthSel.value) - 1);
     const weekSel = document.createElement('select');
     weekSel.id = 'dow-week';
-    weeks.forEach((w, i) => {
-      const o = document.createElement('option'); o.value = i; o.textContent = `${i+1}주 (${w.label})`; weekSel.appendChild(o);
-    });
-    weekSel.value = String(weeks.length - 1); // 최신 주
+    weeks.forEach((w, i) => { const o = document.createElement('option'); o.value = i; o.textContent = `${i+1}주 (${w.label})`; weekSel.appendChild(o); });
+    weekSel.value = String(weeks.length - 1);
     container.appendChild(weekSel);
     weekSel.addEventListener('change', () => renderDowChartData());
-  }
+  };
+  addWeekSelector();
 
-  // 이벤트: 년도/월 변경 시 차트 + 주차 목록 갱신
-  yearSel.addEventListener('change', () => { updateMonthOptions(); updateDowSelectors(mode === 'week' ? 'week' : mode); renderDowChartData(); });
-  monthSel.addEventListener('change', () => { if (mode === 'week') updateDowSelectors('week'); renderDowChartData(); });
-
-  function updateMonthOptions() {
-    const y = yearSel.value;
-    monthSel.innerHTML = '';
-    for (let m = 1; m <= 12; m++) {
-      const key = `${y}-${String(m).padStart(2,'0')}`;
-      if (yms.includes(key)) { const o = document.createElement('option'); o.value = m; o.textContent = m + '월'; monthSel.appendChild(o); }
-    }
-  }
+  // 이벤트
+  yearSel.addEventListener('change', () => {
+    populateMonths();
+    addWeekSelector();
+    renderDowChartData();
+  });
+  monthSel.addEventListener('change', () => {
+    addWeekSelector();
+    renderDowChartData();
+  });
 }
 
 // 실제 차트 데이터 렌더링
