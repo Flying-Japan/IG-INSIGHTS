@@ -109,11 +109,14 @@
         <div class="chart-box full-width">
           <div class="chart-header">
             <h3>요일별 도달 & 참여</h3>
-            <div class="toggle-group" id="dow-toggle">
-              <button class="toggle-btn active" data-mode="all">전체</button>
-              <button class="toggle-btn" data-mode="month">최근 1달</button>
-              <button class="toggle-btn" data-mode="week">최근 1주</button>
-              <button class="toggle-btn" data-mode="daily">일별</button>
+            <div class="dow-controls">
+              <div class="toggle-group" id="dow-toggle">
+                <button class="toggle-btn active" data-mode="all">전체</button>
+                <button class="toggle-btn" data-mode="month">월별</button>
+                <button class="toggle-btn" data-mode="week">주별</button>
+                <button class="toggle-btn" data-mode="daily">일별</button>
+              </div>
+              <div class="dow-selectors" id="dow-selectors"></div>
             </div>
           </div>
           <div id="chart-daily-reach"></div>
