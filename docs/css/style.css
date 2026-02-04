@@ -37,6 +37,28 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.update-btn {
+  display: inline-block;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  border: none;
+  border-radius: 6px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.update-btn:hover {
+  opacity: 0.85;
+}
 .update-time {
   font-size: 13px;
   color: var(--text2);
