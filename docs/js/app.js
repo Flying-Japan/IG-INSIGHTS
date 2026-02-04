@@ -348,48 +348,81 @@ function renderDowChart(mode) {
 
   if (dowChartInstance) dowChartInstance.destroy();
 
-  // "요일별" 모드: 최근 7일을 날짜별로 표시
+  // "일별" 모드: 해당 월 전체를 날짜별로 표시 (30~31일)
   if (mode === 'daily') {
-    const recent = filterByDays(posts, 7);
-    // 날짜별 그룹
-    const dateMap = {};
-    recent.forEach(p => {
-      const key = p.upload_date;
-      if (!dateMap[key]) dateMap[key] = { reach: [], eng: [], label: key };
-      if (p.reach) dateMap[key].reach.push(p.reach);
-      if (p.engagement_rate) dateMap[key].eng.push(p.engagement_rate);
-    });
-    const entries = Object.values(dateMap).sort((a, b) => a.label.localeCompare(b.label));
-    if (!entries.length) {
-      document.getElementById('chart-daily-reach').innerHTML = '<p style="text-align:center;color:var(--text2);padding:40px">최근 7일 데이터가 없습니다</p>';
+    // 가장 최근 게시물의 월 기준으로 해당 월 전체 필터
+    const allDates = posts.map(p => parseUploadDate(p.upload_date)).filter(Boolean);
+    if (!allDates.length) {
+      document.getElementById('chart-daily-reach').innerHTML = '<p style="text-align:center;color:var(--text2);padding:40px">데이터가 없습니다</p>';
       return;
     }
+    const latest = allDates.reduce((a, b) => a > b ? a : b);
+    const targetYear = latest.getFullYear();
+    const targetMonth = latest.getMonth(); // 0-indexed
+
+    const monthPosts = posts.filter(p => {
+      const d = parseUploadDate(p.upload_date);
+      return d && d.getFullYear() === targetYear && d.getMonth() === targetMonth;
+    });
+
+    // 해당 월의 모든 날짜 생성 (1일 ~ 말일)
+    const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+    const allDays = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dt = new Date(targetYear, targetMonth, i);
+      const dayChar = ['일','월','화','수','목','금','토'][dt.getDay()];
+      const yy = String(targetYear).slice(-2);
+      const mm = String(targetMonth + 1).padStart(2, '0');
+      const dd = String(i).padStart(2, '0');
+      allDays.push({ date: dt, label: `${mm}.${dd}(${dayChar})`, reach: [], eng: [] });
+    }
+
+    // 게시물 데이터를 날짜별로 매핑
+    monthPosts.forEach(p => {
+      const d = parseUploadDate(p.upload_date);
+      if (!d) return;
+      const idx = d.getDate() - 1;
+      if (allDays[idx]) {
+        if (p.reach) allDays[idx].reach.push(p.reach);
+        if (p.engagement_rate) allDays[idx].eng.push(p.engagement_rate);
+      }
+    });
+
+    // 오늘 이후 날짜는 제외 (아직 안 온 날)
+    const today = new Date();
+    const entries = allDays.filter(d => d.date <= today);
+
+    const monthLabel = `${targetYear}년 ${targetMonth + 1}월`;
 
     dowChartInstance = new ApexCharts(document.getElementById('chart-daily-reach'), {
       ...chartTheme,
       series: [
         { name: '총 도달', type: 'bar', data: entries.map(e => sum(e.reach)) },
-        { name: '평균 참여율', type: 'line', data: entries.map(e => +avg(e.eng).toFixed(1)) },
+        { name: '평균 참여율', type: 'line', data: entries.map(e => e.eng.length ? +avg(e.eng).toFixed(1) : 0) },
       ],
       chart: { ...chartTheme.chart, type: 'line', height: 300 },
-      xaxis: { categories: entries.map(e => e.label), labels: { style: { fontSize: '11px' } } },
+      xaxis: {
+        categories: entries.map(e => e.label),
+        labels: { style: { fontSize: '10px' }, rotate: -45, rotateAlways: entries.length > 15 },
+      },
       yaxis: [
         { title: { text: '총 도달', style: { color: '#9499b3' } }, labels: { formatter: v => fmt(v) } },
         { opposite: true, title: { text: '참여율(%)', style: { color: '#9499b3' } }, labels: { formatter: v => v.toFixed(1) + '%' }, min: 0 },
       ],
       colors: [chartColors.blue, chartColors.green],
-      plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
-      stroke: { width: [0, 3] },
-      markers: { size: [0, 5] },
+      plotOptions: { bar: { borderRadius: 2, columnWidth: '70%' } },
+      stroke: { width: [0, 2] },
+      markers: { size: [0, 3] },
       grid: chartTheme.grid,
       tooltip: {
         ...chartTheme.tooltip, shared: true,
         custom: ({ dataPointIndex }) => {
           const e = entries[dataPointIndex];
+          const cnt = e.reach.length;
           return `<div style="padding:10px;font-size:12px">
-            <strong>${e.label}</strong> (${e.reach.length}개 게시물)<br>
+            <strong>${monthLabel} ${e.label}</strong>${cnt ? ` (${cnt}개 게시물)` : ' (업로드 없음)'}<br>
             총 도달: <b>${fmt(sum(e.reach))}</b><br>
-            평균 참여율: <b>${avg(e.eng).toFixed(1)}%</b>
+            평균 참여율: <b>${e.eng.length ? avg(e.eng).toFixed(1) : 0}%</b>
           </div>`;
         },
       },
