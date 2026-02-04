@@ -63,9 +63,9 @@
     "total_shares": 162671,
     "total_comments": 5942,
     "total_engagement": 381147,
-    "avg_engagement_rate": 5.9,
-    "avg_save_rate": 1.7,
-    "avg_share_rate": 1.1
+    "avg_engagement_rate": 0.059,
+    "avg_save_rate": 0.017,
+    "avg_share_rate": 0.011
   },
   {
     "date": "26.02.04(수)",
@@ -73,13 +73,13 @@
     "follower_change": 6,
     "following": 760,
     "post_count": 313,
-    "total_reach": 9914435,
-    "total_views": 20762191,
-    "total_likes": 131637,
-    "total_saves": 81098,
-    "total_shares": 162909,
+    "total_reach": 9914478,
+    "total_views": 20762294,
+    "total_likes": 131638,
+    "total_saves": 81097,
+    "total_shares": 162914,
     "total_comments": 5982,
-    "total_engagement": 381626,
+    "total_engagement": 381631,
     "avg_engagement_rate": 5.8,
     "avg_save_rate": 1.7,
     "avg_share_rate": 1.1
