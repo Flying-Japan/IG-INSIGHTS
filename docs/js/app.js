@@ -648,6 +648,47 @@ function renderContent() {
   insightHtml += `</div>`;
   document.getElementById('content-insights').innerHTML = insightHtml;
 
+  // ── 지표별 TOP 3 챔피언 카드 ──
+  const metrics = [
+    { key: 'reach', label: '도달', icon: '📡', fmt: v => fmt(v) },
+    { key: 'views', label: '조회수', icon: '👁', fmt: v => fmt(v) },
+    { key: 'likes', label: '좋아요', icon: '❤️', fmt: v => fmt(v) },
+    { key: 'saves', label: '저장', icon: '🔖', fmt: v => fmt(v) },
+    { key: 'shares', label: '공유', icon: '🔗', fmt: v => fmt(v) },
+    { key: 'comments', label: '댓글', icon: '💬', fmt: v => fmt(v) },
+    { key: 'engagement_rate', label: '참여율', icon: '🔥', fmt: v => fmtPct(v) },
+  ];
+  const typeIcon = t => ({ 'CAROUSEL_ALBUM': '🎠', 'VIDEO': '🎬', 'IMAGE': '📸' }[t] || '📄');
+  let champHtml = '';
+  metrics.forEach(m => {
+    const sorted = [...posts].filter(p => p[m.key] != null).sort((a, b) => b[m.key] - a[m.key]);
+    const top3 = sorted.slice(0, 3);
+    if (!top3.length) return;
+    const first = top3[0];
+    const titleLink = (p, maxLen = 28) => {
+      const t = (p.title || '제목 없음').length > maxLen ? p.title.slice(0, maxLen) + '…' : (p.title || '제목 없음');
+      return p.url ? `<a href="${p.url}" target="_blank" rel="noopener">${t}</a>` : t;
+    };
+    champHtml += `<div class="champion-card">`;
+    champHtml += `<h4>${m.icon} ${m.label} TOP</h4>`;
+    champHtml += `<div class="champion-first">`;
+    champHtml += `<span class="type-icon">${typeIcon(first.media_type)}</span>`;
+    champHtml += `<div class="champion-title">${titleLink(first, 40)}</div>`;
+    champHtml += `<div class="champion-value">${m.fmt(first[m.key])}</div>`;
+    if (first.category) champHtml += `<span class="champion-category">${first.category}</span>`;
+    champHtml += `</div>`;
+    // 2·3위
+    top3.slice(1).forEach((p, i) => {
+      champHtml += `<div class="champion-runner">`;
+      champHtml += `<span class="runner-rank">${i + 2}</span>`;
+      champHtml += `<span class="runner-title">${titleLink(p, 22)}</span>`;
+      champHtml += `<span class="runner-value">${m.fmt(p[m.key])}</span>`;
+      champHtml += `</div>`;
+    });
+    champHtml += `</div>`;
+  });
+  document.getElementById('metric-champions').innerHTML = champHtml;
+
   // Content type comparison grouped bar
   new ApexCharts(document.getElementById('chart-content-compare'), {
     ...chartTheme,
