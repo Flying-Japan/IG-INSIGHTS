@@ -214,6 +214,14 @@ def main():
             json.dump(data, f, ensure_ascii=False, indent=2)
         print(f"  {filename}: {len(data) if isinstance(data, list) else 1}건 저장")
 
+    # 기존 posts.json → posts_yesterday.json으로 복사 (전일 대비 비교용)
+    posts_path = os.path.join(data_dir, "posts.json")
+    posts_yesterday_path = os.path.join(data_dir, "posts_yesterday.json")
+    if os.path.exists(posts_path):
+        import shutil
+        shutil.copy2(posts_path, posts_yesterday_path)
+        print(f"  posts_yesterday.json: 이전 데이터 백업 완료")
+
     write_json("posts.json", posts)
     write_json("followers.json", followers)
     write_json("daily_report.json", daily_report)

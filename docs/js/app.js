@@ -17,19 +17,39 @@ const chartTheme = {
   tooltip: { theme: 'dark' },
 };
 
+// ── Daily Change Helpers ──
+function getDailyChange(daily, field) {
+  if (!daily || daily.length < 2) return null;
+  const today = daily[daily.length - 1];
+  const yesterday = daily[daily.length - 2];
+  const cur = today[field], prev = yesterday[field];
+  if (cur == null || prev == null) return null;
+  return { change: cur - prev, prev };
+}
+function changeBadge(changeObj, isRate = false) {
+  if (!changeObj) return '';
+  const { change } = changeObj;
+  if (change === 0) return '';
+  const sign = change >= 0 ? '+' : '';
+  const val = isRate ? (sign + change.toFixed(1) + '%p') : (sign + fmt(change));
+  const cls = change >= 0 ? 'positive' : 'negative';
+  return ` <span class="kpi-change ${cls}">${val}</span>`;
+}
+
 // ── Data Store ──
-let DATA = { posts: [], followers: [], daily: [], meta: {} };
+let DATA = { posts: [], followers: [], daily: [], meta: {}, postsYesterday: [] };
 
 // ── Init ──
 async function init() {
   try {
-    const [posts, followers, daily, meta] = await Promise.all([
+    const [posts, followers, daily, meta, postsYesterday] = await Promise.all([
       fetch('data/posts.json').then(r => r.json()),
       fetch('data/followers.json').then(r => r.json()),
       fetch('data/daily_report.json').then(r => r.json()),
       fetch('data/meta.json').then(r => r.json()),
+      fetch('data/posts_yesterday.json').then(r => r.ok ? r.json() : []).catch(() => []),
     ]);
-    DATA = { posts, followers, daily, meta };
+    DATA = { posts, followers, daily, meta, postsYesterday };
     document.getElementById('update-time').textContent = '업데이트: ' + meta.updated_at_ko;
     document.getElementById('loading').classList.add('hidden');
 
@@ -77,26 +97,34 @@ function renderOverview() {
   }
 
   const engRates = posts.map(p => p.engagement_rate).filter(v => v != null);
-  document.getElementById('kpi-engagement').textContent = fmtPct(avg(engRates));
+  document.getElementById('kpi-engagement').innerHTML = fmtPct(avg(engRates)) + changeBadge(getDailyChange(daily, 'avg_engagement_rate'), true);
 
   const reaches = posts.map(p => p.reach).filter(v => v != null);
-  document.getElementById('kpi-reach').textContent = fmt(Math.round(avg(reaches)));
+  const avgReachVal = Math.round(avg(reaches));
+  const avgReachChange = daily.length >= 2 ? (() => {
+    const d1 = daily[daily.length - 1], d0 = daily[daily.length - 2];
+    if (d1.total_reach && d1.post_count && d0.total_reach && d0.post_count) {
+      return { change: Math.round(d1.total_reach / d1.post_count - d0.total_reach / d0.post_count) };
+    }
+    return null;
+  })() : null;
+  document.getElementById('kpi-reach').innerHTML = fmt(avgReachVal) + changeBadge(avgReachChange);
 
   const totalLikes = sum(posts.map(p => p.likes));
-  document.getElementById('kpi-likes').textContent = fmt(totalLikes);
+  document.getElementById('kpi-likes').innerHTML = fmt(totalLikes) + changeBadge(getDailyChange(daily, 'total_likes'));
 
   const top = posts.find(p => p.rank === 1);
   document.getElementById('kpi-top').textContent = top ? top.title : '-';
 
-  // Total stats
-  document.getElementById('kpi-total-reach').textContent = fmt(sum(posts.map(p => p.reach)));
-  document.getElementById('kpi-total-views').textContent = fmt(sum(posts.map(p => p.views)));
-  document.getElementById('kpi-total-likes').textContent = fmt(sum(posts.map(p => p.likes)));
-  document.getElementById('kpi-total-saves').textContent = fmt(sum(posts.map(p => p.saves)));
-  document.getElementById('kpi-total-shares').textContent = fmt(sum(posts.map(p => p.shares)));
-  document.getElementById('kpi-total-comments').textContent = fmt(sum(posts.map(p => p.comments)));
+  // Total stats with daily changes
+  document.getElementById('kpi-total-reach').innerHTML = fmt(sum(posts.map(p => p.reach))) + changeBadge(getDailyChange(daily, 'total_reach'));
+  document.getElementById('kpi-total-views').innerHTML = fmt(sum(posts.map(p => p.views))) + changeBadge(getDailyChange(daily, 'total_views'));
+  document.getElementById('kpi-total-likes').innerHTML = fmt(sum(posts.map(p => p.likes))) + changeBadge(getDailyChange(daily, 'total_likes'));
+  document.getElementById('kpi-total-saves').innerHTML = fmt(sum(posts.map(p => p.saves))) + changeBadge(getDailyChange(daily, 'total_saves'));
+  document.getElementById('kpi-total-shares').innerHTML = fmt(sum(posts.map(p => p.shares))) + changeBadge(getDailyChange(daily, 'total_shares'));
+  document.getElementById('kpi-total-comments').innerHTML = fmt(sum(posts.map(p => p.comments))) + changeBadge(getDailyChange(daily, 'total_comments'));
   const totalEngagement = sum(posts.map(p => (p.likes || 0) + (p.saves || 0) + (p.shares || 0) + (p.comments || 0)));
-  document.getElementById('kpi-total-engagement').textContent = fmt(totalEngagement);
+  document.getElementById('kpi-total-engagement').innerHTML = fmt(totalEngagement) + changeBadge(getDailyChange(daily, 'total_engagement'));
 
   // Follower trend chart (last 30 days from daily report or follower data)
   if (followers.length > 0) {
@@ -148,11 +176,18 @@ function renderOverview() {
   // ── Marketer KPIs ──
   const saveRates = posts.map(p => p.save_rate).filter(v => v != null);
   const shareRates = posts.map(p => p.share_rate).filter(v => v != null);
-  document.getElementById('kpi-avg-save-rate').textContent = fmtPct(avg(saveRates));
-  document.getElementById('kpi-avg-share-rate').textContent = fmtPct(avg(shareRates));
+  document.getElementById('kpi-avg-save-rate').innerHTML = fmtPct(avg(saveRates)) + changeBadge(getDailyChange(daily, 'avg_save_rate'), true);
+  document.getElementById('kpi-avg-share-rate').innerHTML = fmtPct(avg(shareRates)) + changeBadge(getDailyChange(daily, 'avg_share_rate'), true);
 
   const avgEngPerPost = posts.length ? Math.round(sum(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0))) / posts.length) : 0;
-  document.getElementById('kpi-avg-engagement-per-post').textContent = fmt(avgEngPerPost);
+  const engPerPostChange = daily.length >= 2 ? (() => {
+    const d1 = daily[daily.length - 1], d0 = daily[daily.length - 2];
+    if (d1.total_engagement && d1.post_count && d0.total_engagement && d0.post_count) {
+      return { change: Math.round(d1.total_engagement / d1.post_count - d0.total_engagement / d0.post_count) };
+    }
+    return null;
+  })() : null;
+  document.getElementById('kpi-avg-engagement-per-post').innerHTML = fmt(avgEngPerPost) + changeBadge(engPerPostChange);
 
   const reachRate = latestFollowers ? (avg(reaches) / latestFollowers * 100) : 0;
   document.getElementById('kpi-reach-rate').textContent = fmtPct(reachRate);
@@ -232,6 +267,33 @@ function renderOverview() {
 // ══════════════════════════════════════════════════
 let postTable = null;
 let currentSortField = 'rank';
+let yesterdayMap = new Map();
+
+// Build yesterday lookup map
+function buildYesterdayMap() {
+  yesterdayMap = new Map();
+  (DATA.postsYesterday || []).forEach(p => {
+    const key = p.url || p.title;
+    if (key) yesterdayMap.set(key, p);
+  });
+}
+
+// Format cell with change
+function fmtWithChange(value, field, row) {
+  if (value == null) return '-';
+  const key = row.url || row.title;
+  const prev = yesterdayMap.get(key);
+  let html = fmt(value);
+  if (prev && prev[field] != null) {
+    const diff = value - prev[field];
+    if (diff !== 0) {
+      const sign = diff > 0 ? '+' : '';
+      const cls = diff > 0 ? 'positive' : 'negative';
+      html += ` <span class="cell-change ${cls}">(${sign}${fmt(diff)})</span>`;
+    }
+  }
+  return html;
+}
 
 // Column definitions factory
 const colDef = {
@@ -244,18 +306,36 @@ const colDef = {
       const row = cell.getRow().getData();
       return row.url ? `<a href="${row.url}" target="_blank" style="color:#F77737;text-decoration:none">${cell.getValue()}</a>` : cell.getValue();
     }}),
-  reach:      () => ({ title: '도달', field: 'reach', width: 80, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
-  views:      () => ({ title: '조회수', field: 'views', width: 80, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
-  likes:      () => ({ title: '좋아요', field: 'likes', width: 70, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
-  saves:      () => ({ title: '저장', field: 'saves', width: 65, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
-  shares:     () => ({ title: '공유', field: 'shares', width: 65, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
-  comments:   () => ({ title: '댓글', field: 'comments', width: 60, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) }),
-  engagement_rate: () => ({ title: '참여율', field: 'engagement_rate', width: 75, hozAlign: 'right', sorter: 'number',
+  reach:      () => ({ title: '도달', field: 'reach', width: 100, hozAlign: 'right', sorter: 'number',
+    formatter: cell => fmtWithChange(cell.getValue(), 'reach', cell.getRow().getData()) }),
+  views:      () => ({ title: '조회수', field: 'views', width: 100, hozAlign: 'right', sorter: 'number',
+    formatter: cell => fmtWithChange(cell.getValue(), 'views', cell.getRow().getData()) }),
+  likes:      () => ({ title: '좋아요', field: 'likes', width: 90, hozAlign: 'right', sorter: 'number',
+    formatter: cell => fmtWithChange(cell.getValue(), 'likes', cell.getRow().getData()) }),
+  saves:      () => ({ title: '저장', field: 'saves', width: 85, hozAlign: 'right', sorter: 'number',
+    formatter: cell => fmtWithChange(cell.getValue(), 'saves', cell.getRow().getData()) }),
+  shares:     () => ({ title: '공유', field: 'shares', width: 85, hozAlign: 'right', sorter: 'number',
+    formatter: cell => fmtWithChange(cell.getValue(), 'shares', cell.getRow().getData()) }),
+  comments:   () => ({ title: '댓글', field: 'comments', width: 80, hozAlign: 'right', sorter: 'number',
+    formatter: cell => fmtWithChange(cell.getValue(), 'comments', cell.getRow().getData()) }),
+  engagement_rate: () => ({ title: '참여율', field: 'engagement_rate', width: 95, hozAlign: 'right', sorter: 'number',
     formatter: cell => {
       const v = cell.getValue();
       if (v == null) return '-';
       const color = v >= 5 ? '#00c853' : v >= 3 ? '#ffd600' : '#9499b3';
-      return `<span style="color:${color}">${v.toFixed(1)}%</span>`;
+      const row = cell.getRow().getData();
+      const key = row.url || row.title;
+      const prev = yesterdayMap.get(key);
+      let changeHtml = '';
+      if (prev && prev.engagement_rate != null) {
+        const diff = v - prev.engagement_rate;
+        if (diff !== 0) {
+          const sign = diff > 0 ? '+' : '';
+          const cls = diff > 0 ? 'positive' : 'negative';
+          changeHtml = ` <span class="cell-change ${cls}">(${sign}${diff.toFixed(1)})</span>`;
+        }
+      }
+      return `<span style="color:${color}">${v.toFixed(1)}%</span>${changeHtml}`;
     }}),
   composite_score: () => ({ title: '점수', field: 'composite_score', width: 65, hozAlign: 'right', sorter: 'number',
     formatter: cell => { const v = cell.getValue(); return v != null ? v.toFixed(1) : '-'; }}),
@@ -295,6 +375,7 @@ function recalcRankedData(posts, sortField, sortDir) {
 
 function renderPostTable() {
   const { posts } = DATA;
+  buildYesterdayMap();
 
   // Populate category filter
   const categories = [...new Set(posts.map(p => p.category).filter(Boolean))].sort();
@@ -767,5 +848,48 @@ document.addEventListener('click', e => {
   }
 });
 
-// ── Start ──
-document.addEventListener('DOMContentLoaded', init);
+// ── Manual Update Button ──
+const WORKER_URL = ''; // Cloudflare Worker URL을 여기에 설정
+
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+
+  const btn = document.getElementById('manual-update-btn');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    if (!WORKER_URL) {
+      // Fallback: Worker 미설정 시 GitHub Actions 페이지로 이동
+      window.open('https://github.com/Flying-Japan/IG-INSIGHTS/actions/workflows/daily-insights.yml', '_blank');
+      return;
+    }
+
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '요청 중...';
+
+    try {
+      const res = await fetch(WORKER_URL, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        btn.textContent = '업데이트 시작됨 ✓';
+        btn.style.background = 'linear-gradient(135deg, #00c853, #00e676)';
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.style.background = '';
+          btn.disabled = false;
+        }, 5000);
+      } else {
+        throw new Error(data.error || 'Failed');
+      }
+    } catch (e) {
+      btn.textContent = '실패 - 다시 시도';
+      btn.style.background = 'linear-gradient(135deg, #ff5252, #ff1744)';
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.style.background = '';
+        btn.disabled = false;
+      }, 3000);
+    }
+  });
+});
