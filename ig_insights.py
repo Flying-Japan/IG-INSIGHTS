@@ -396,14 +396,20 @@ def get_sheet():
     # GitHub Actions: 환경변수 GOOGLE_CREDENTIALS_JSON에서 직접 로드
     # 로컬: google_credentials.json 파일에서 로드
     google_creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    print(f"  SPREADSHEET_ID = '{SPREADSHEET_ID}' (len={len(SPREADSHEET_ID)})")
+    print(f"  GOOGLE_CREDENTIALS_JSON exists: {bool(google_creds_json)}")
     if google_creds_json:
         import json
+        print(f"  GOOGLE_CREDENTIALS_JSON length: {len(google_creds_json)}")
+        print(f"  GOOGLE_CREDENTIALS_JSON first 20 chars: {google_creds_json[:20]}")
         info = json.loads(google_creds_json)
+        print(f"  Parsed client_email: {info.get('client_email', 'NOT FOUND')}")
         creds = Credentials.from_service_account_info(info, scopes=scopes)
     else:
         creds_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), GOOGLE_CREDENTIALS_FILE)
         creds = Credentials.from_service_account_file(creds_path, scopes=scopes)
     client = gspread.authorize(creds)
+    print(f"  Attempting to open spreadsheet: {SPREADSHEET_ID}")
     spreadsheet = client.open_by_key(SPREADSHEET_ID)
     return spreadsheet
 
