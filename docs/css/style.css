@@ -214,6 +214,43 @@ body {
 .chart-box.full-width {
   grid-column: 1 / -1;
 }
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.chart-header h3 {
+  margin-bottom: 0;
+}
+.toggle-group {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.toggle-btn {
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: var(--bg3);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.toggle-btn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+.toggle-btn.active {
+  background: var(--accent3);
+  color: #fff;
+}
+.toggle-btn:hover:not(.active) {
+  background: var(--border);
+  color: var(--text);
+}
 
 /* ── Metric Champions ── */
 .metric-champions {

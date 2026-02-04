@@ -163,23 +163,8 @@ function renderOverview() {
     plotOptions: { pie: { donut: { size: '55%' } } },
   }).render();
 
-  // Daily reach & engagement
-  if (daily.length > 0) {
-    new ApexCharts(document.getElementById('chart-daily-reach'), {
-      ...chartTheme,
-      series: [
-        { name: '총 도달', data: daily.map(d => d.total_reach) },
-        { name: '총 참여', data: daily.map(d => d.total_engagement) },
-      ],
-      chart: { ...chartTheme.chart, type: 'bar', height: 280 },
-      xaxis: { categories: daily.map(d => d.date.replace(/\(.\)$/, '')), labels: { style: { fontSize: '11px' } } },
-      yaxis: { labels: { formatter: v => fmt(v) } },
-      colors: [chartColors.blue, chartColors.green],
-      plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } },
-      grid: chartTheme.grid,
-      tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) } },
-    }).render();
-  }
+  // Day-of-week reach & engagement (replaces daily chart)
+  renderDowChart('all');
 
   // ── Marketer KPIs ──
   const saveRates = posts.map(p => p.save_rate).filter(v => v != null);
@@ -199,43 +184,6 @@ function renderOverview() {
 
   const reachRate = latestFollowers ? (avg(reaches) / latestFollowers * 100) : 0;
   document.getElementById('kpi-reach-rate').textContent = fmtPct(reachRate);
-
-  // ── Day of Week chart ──
-  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-  const dayMap = {};
-  dayNames.forEach(d => { dayMap[d] = { reach: [], eng: [], saves: [], count: 0 }; });
-  posts.forEach(p => {
-    const m = p.upload_date.match(/\((.)\)/);
-    if (m && dayMap[m[1]]) {
-      const d = dayMap[m[1]];
-      d.count++;
-      if (p.reach) d.reach.push(p.reach);
-      if (p.engagement_rate) d.eng.push(p.engagement_rate);
-      if (p.saves) d.saves.push(p.saves);
-    }
-  });
-  const dayStats = dayNames.map(d => ({
-    day: d, count: dayMap[d].count,
-    avgReach: avg(dayMap[d].reach), avgEng: avg(dayMap[d].eng), avgSaves: avg(dayMap[d].saves),
-  }));
-
-  new ApexCharts(document.getElementById('chart-day-of-week'), {
-    ...chartTheme,
-    series: [
-      { name: '평균 도달', data: dayStats.map(d => Math.round(d.avgReach)) },
-      { name: '평균 저장', data: dayStats.map(d => Math.round(d.avgSaves)) },
-    ],
-    chart: { ...chartTheme.chart, type: 'bar', height: 280 },
-    xaxis: { categories: dayStats.map(d => d.day + '요일 (' + d.count + '개)') },
-    yaxis: [
-      { title: { text: '도달', style: { color: '#9499b3' } }, labels: { formatter: v => fmt(v) } },
-      { opposite: true, title: { text: '저장', style: { color: '#9499b3' } }, labels: { formatter: v => fmt(v) } },
-    ],
-    colors: [chartColors.blue, chartColors.green],
-    plotOptions: { bar: { borderRadius: 3, columnWidth: '55%' } },
-    grid: chartTheme.grid,
-    tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) } },
-  }).render();
 
   // ── Carousel vs Reels comparison ──
   const typeCompare = {};
@@ -380,6 +328,105 @@ function recalcRankedData(posts, sortField, sortDir) {
   }
   return sorted.map((p, i) => ({ ...p, _rank: i + 1 }));
 }
+
+// ── Day-of-Week Chart ──
+let dowChartInstance = null;
+function renderDowChart(mode) {
+  const { posts } = DATA;
+  const dayOrder = ['월', '화', '수', '목', '금', '토', '일'];
+
+  // 최근 4주 필터: upload_date "26.02.03(화)" → Date 변환
+  let filtered = posts;
+  if (mode === 'recent') {
+    const now = new Date();
+    const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+    filtered = posts.filter(p => {
+      const m = p.upload_date.match(/(\d{2})\.(\d{2})\.(\d{2})/);
+      if (!m) return false;
+      const d = new Date(2000 + parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+      return d >= fourWeeksAgo;
+    });
+  }
+
+  const dayMap = {};
+  dayOrder.forEach(d => { dayMap[d] = { reach: [], eng: [], count: 0 }; });
+  filtered.forEach(p => {
+    const m = p.upload_date.match(/\((.)\)/);
+    if (m && dayMap[m[1]]) {
+      dayMap[m[1]].count++;
+      if (p.reach) dayMap[m[1]].reach.push(p.reach);
+      if (p.engagement_rate) dayMap[m[1]].eng.push(p.engagement_rate);
+    }
+  });
+
+  const stats = dayOrder.map(d => ({
+    day: d, count: dayMap[d].count,
+    avgReach: avg(dayMap[d].reach),
+    avgEng: avg(dayMap[d].eng),
+  }));
+
+  // 최고 도달 요일 강조 색상
+  const maxReach = Math.max(...stats.map(s => s.avgReach));
+  const reachColors = stats.map(s => s.avgReach === maxReach && s.count > 0 ? chartColors.accent3 : chartColors.blue);
+
+  if (dowChartInstance) dowChartInstance.destroy();
+
+  dowChartInstance = new ApexCharts(document.getElementById('chart-daily-reach'), {
+    ...chartTheme,
+    series: [
+      { name: '평균 도달', type: 'bar', data: stats.map(s => Math.round(s.avgReach)) },
+      { name: '평균 참여율', type: 'line', data: stats.map(s => +s.avgEng.toFixed(1)) },
+    ],
+    chart: { ...chartTheme.chart, type: 'line', height: 300 },
+    xaxis: {
+      categories: stats.map(s => s.day + '요일'),
+      labels: { style: { fontSize: '12px' } },
+    },
+    yaxis: [
+      { title: { text: '평균 도달', style: { color: '#9499b3' } }, labels: { formatter: v => fmt(v) } },
+      { opposite: true, title: { text: '참여율(%)', style: { color: '#9499b3' } }, labels: { formatter: v => v.toFixed(1) + '%' }, min: 0 },
+    ],
+    colors: [chartColors.blue, chartColors.green],
+    plotOptions: { bar: { borderRadius: 4, columnWidth: '55%', distributed: false } },
+    stroke: { width: [0, 3] },
+    markers: { size: [0, 5] },
+    grid: chartTheme.grid,
+    tooltip: {
+      ...chartTheme.tooltip,
+      shared: true,
+      custom: ({ series, dataPointIndex }) => {
+        const s = stats[dataPointIndex];
+        return `<div style="padding:10px;font-size:12px">
+          <strong>${s.day}요일</strong> (${s.count}개 게시물)<br>
+          평균 도달: <b>${fmt(Math.round(s.avgReach))}</b><br>
+          평균 참여율: <b>${s.avgEng.toFixed(1)}%</b>
+        </div>`;
+      },
+    },
+    annotations: {
+      xaxis: [{
+        x: stats.reduce((best, s) => s.avgReach > best.avgReach && s.count > 0 ? s : best, stats[0]).day + '요일',
+        borderColor: chartColors.accent3,
+        label: {
+          text: '최적 업로드 요일',
+          style: { background: chartColors.accent3, color: '#fff', fontSize: '11px', padding: { left: 6, right: 6, top: 2, bottom: 2 } },
+        },
+      }],
+    },
+  });
+  dowChartInstance.render();
+
+  // 토글 버튼 활성화 상태
+  document.querySelectorAll('#dow-toggle .toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+}
+
+// 토글 이벤트 바인딩
+document.getElementById('dow-toggle')?.addEventListener('click', e => {
+  const btn = e.target.closest('.toggle-btn');
+  if (btn && btn.dataset.mode) renderDowChart(btn.dataset.mode);
+});
 
 function renderPostTable() {
   const { posts } = DATA;

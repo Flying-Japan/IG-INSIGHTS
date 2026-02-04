@@ -107,7 +107,13 @@
           <div id="chart-type-dist"></div>
         </div>
         <div class="chart-box full-width">
-          <h3>일별 도달 & 참여</h3>
+          <div class="chart-header">
+            <h3>요일별 도달 & 참여</h3>
+            <div class="toggle-group" id="dow-toggle">
+              <button class="toggle-btn active" data-mode="all">전체</button>
+              <button class="toggle-btn" data-mode="recent">최근 4주</button>
+            </div>
+          </div>
           <div id="chart-daily-reach"></div>
         </div>
       </div>
@@ -134,10 +140,6 @@
         </div>
       </div>
       <div class="chart-grid">
-        <div class="chart-box">
-          <h3>요일별 평균 성과</h3>
-          <div id="chart-day-of-week"></div>
-        </div>
         <div class="chart-box">
           <h3>캐러셀 vs 릴스 비교</h3>
           <div id="chart-type-compare"></div>
