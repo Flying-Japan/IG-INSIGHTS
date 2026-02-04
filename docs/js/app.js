@@ -49,6 +49,14 @@ async function init() {
       fetch('data/meta.json').then(r => r.json()),
       fetch('data/posts_yesterday.json').then(r => r.ok ? r.json() : []).catch(() => []),
     ]);
+    // 비율 필드 정규화: 0.059 형태(소수)를 5.9 형태(퍼센트)로 통일
+    const rateFields = ['avg_engagement_rate', 'avg_save_rate', 'avg_share_rate'];
+    daily.forEach(d => {
+      rateFields.forEach(f => {
+        if (d[f] != null && d[f] < 1) d[f] = +(d[f] * 100).toFixed(2);
+      });
+    });
+
     DATA = { posts, followers, daily, meta, postsYesterday };
     document.getElementById('update-time').textContent = '업데이트: ' + meta.updated_at_ko;
     document.getElementById('loading').classList.add('hidden');
