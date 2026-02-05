@@ -435,7 +435,12 @@ function renderStatsToggle() {
 // KPI dropdown binding
 document.getElementById('kpi-mode-dropdown')?.addEventListener('change', function() {
   currentKpiMode = this.value;
-  updateKpiPeriodSelectors(this.value);
+  if (this.value === 'total' || this.value === 'avg') {
+    document.getElementById('kpi-period-selectors').innerHTML = '';
+    renderKpiStats(this.value, filterByMilestone(DATA.posts));
+  } else {
+    updateKpiPeriodSelectors(this.value);
+  }
 });
 
 // Stats toggle panel show/hide
@@ -450,6 +455,77 @@ document.getElementById('stats-toggle-btn')?.addEventListener('click', () => {
     panel.style.display = 'none';
     btn.classList.remove('active');
   }
+});
+
+// ── KPI Card Drag & Drop Reorder ──
+function initKpiDragDrop() {
+  const grid = document.getElementById('kpi-stats-grid');
+  if (!grid) return;
+  let dragEl = null;
+
+  grid.addEventListener('dragstart', e => {
+    const card = e.target.closest('.kpi-card');
+    if (!card) return;
+    dragEl = card;
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+  });
+
+  grid.addEventListener('dragend', e => {
+    const card = e.target.closest('.kpi-card');
+    if (card) card.classList.remove('dragging');
+    grid.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('drag-over'));
+    dragEl = null;
+    // Save order to localStorage
+    const order = [...grid.querySelectorAll('.kpi-card')].map(c => c.dataset.stat);
+    try { localStorage.setItem('kpi-card-order', JSON.stringify(order)); } catch(e) {}
+  });
+
+  grid.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const card = e.target.closest('.kpi-card');
+    if (card && card !== dragEl) {
+      grid.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('drag-over'));
+      card.classList.add('drag-over');
+    }
+  });
+
+  grid.addEventListener('drop', e => {
+    e.preventDefault();
+    const target = e.target.closest('.kpi-card');
+    if (!target || !dragEl || target === dragEl) return;
+    // Determine position
+    const cards = [...grid.querySelectorAll('.kpi-card')];
+    const dragIdx = cards.indexOf(dragEl);
+    const targetIdx = cards.indexOf(target);
+    if (dragIdx < targetIdx) {
+      target.after(dragEl);
+    } else {
+      target.before(dragEl);
+    }
+    target.classList.remove('drag-over');
+  });
+
+  // Make cards draggable & restore saved order
+  grid.querySelectorAll('.kpi-card').forEach(c => c.setAttribute('draggable', 'true'));
+  try {
+    const saved = JSON.parse(localStorage.getItem('kpi-card-order'));
+    if (saved && Array.isArray(saved)) {
+      const cardMap = {};
+      grid.querySelectorAll('.kpi-card').forEach(c => { cardMap[c.dataset.stat] = c; });
+      saved.forEach(stat => {
+        if (cardMap[stat]) grid.appendChild(cardMap[stat]);
+      });
+    }
+  } catch(e) {}
+}
+
+// Init drag after DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  // Small delay to let cards render first
+  setTimeout(initKpiDragDrop, 500);
 });
 
 // ══════════════════════════════════════════════════
