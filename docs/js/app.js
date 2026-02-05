@@ -167,33 +167,248 @@ function renderAll() {
   renderContent();
 }
 
-// ── KPI Stats (Total/Avg toggle) ──
-const statIds = ['reach','views','likes','saves','shares','comments','engagement','share_rate','follows'];
+// ── KPI Stats (Unified with dropdown modes) ──
+const statIds = ['posts','followers','reach','views','likes','saves','shares','comments','engagement','engagement_rate','save_rate','share_rate','follows','top_post'];
 const statLabels = {
-  reach: '도달', views: '조회수', likes: '좋아요', saves: '저장',
-  shares: '공유', comments: '댓글', engagement: '참여',
-  share_rate: '공유율', follows: '팔로우',
+  posts: '게시물', followers: '팔로워', reach: '도달', views: '조회수',
+  likes: '좋아요', saves: '저장', shares: '공유', comments: '댓글',
+  engagement: '참여', engagement_rate: '참여율', save_rate: '저장율',
+  share_rate: '공유율', follows: '팔로우 유입', top_post: 'TOP 게시물',
 };
 let visibleStats = new Set(statIds);
+let currentKpiMode = 'total';
 
-function renderKpiStats(mode) {
-  const statFields = window._kpiStatFields;
-  const daily = window._kpiDaily;
-  if (!statFields) return;
-  const isAvg = mode === 'avg';
+// Group posts by period helper
+function groupPostsByPeriod(posts, mode, year, month, weekIdx) {
+  if (mode === 'yearly') {
+    const byYear = {};
+    posts.forEach(p => {
+      const d = parseUploadDate(p.upload_date);
+      if (d) { const y = d.getFullYear(); if (!byYear[y]) byYear[y] = []; byYear[y].push(p); }
+    });
+    return year && byYear[year] ? byYear[year] : posts;
+  }
+  if (mode === 'monthly') {
+    return posts.filter(p => {
+      const d = parseUploadDate(p.upload_date);
+      return d && d.getFullYear() === year && d.getMonth() === month;
+    });
+  }
+  if (mode === 'weekly') {
+    const weeks = getWeeksInMonth(year, month);
+    const week = weeks[weekIdx];
+    if (!week) return [];
+    return posts.filter(p => {
+      const d = parseUploadDate(p.upload_date);
+      return d && d >= week.start && d <= week.endDate;
+    });
+  }
+  if (mode === 'daily') {
+    // Return posts for the specific day
+    return posts.filter(p => {
+      const d = parseUploadDate(p.upload_date);
+      return d && d.getFullYear() === year && d.getMonth() === month && d.getDate() === weekIdx;
+    });
+  }
+  return posts; // total, avg
+}
+
+function renderKpiStats(mode, periodPosts) {
+  const posts = periodPosts || filterByMilestone(DATA.posts);
+  const followers = filterFollowersByMilestone(DATA.followers);
+  const daily = filterDailyByMilestone(DATA.daily);
+  const isAvg = (mode === 'avg');
+  const isTotal = (mode === 'total');
+  const isPeriod = !isTotal && !isAvg; // yearly/monthly/weekly/daily
+
+  // Build stat values
+  const latestFollowers = followers.length ? followers[followers.length - 1].followers : null;
+  const engRates = posts.map(p => p.engagement_rate).filter(v => v != null);
+  const saveRates = posts.map(p => p.save_rate).filter(v => v != null);
+  const shareRates = posts.map(p => p.share_rate).filter(v => v != null);
+
+  const statFields = [
+    { id: 'posts', val: posts.length, label: isPeriod ? '게시물 수' : '총 게시물' },
+    { id: 'followers', val: latestFollowers, label: '현재 팔로워', noAvg: true },
+    { id: 'reach',
+      val: isAvg ? Math.round(avg(posts.map(p => p.reach).filter(v => v != null))) : sum(posts.map(p => p.reach)),
+      label: isAvg ? '평균 도달' : '전체 도달', daily: 'total_reach' },
+    { id: 'views',
+      val: isAvg ? Math.round(avg(posts.map(p => p.views).filter(v => v != null))) : sum(posts.map(p => p.views)),
+      label: isAvg ? '평균 조회수' : '전체 조회수', daily: 'total_views' },
+    { id: 'likes',
+      val: isAvg ? Math.round(avg(posts.map(p => p.likes).filter(v => v != null))) : sum(posts.map(p => p.likes)),
+      label: isAvg ? '평균 좋아요' : '전체 좋아요', daily: 'total_likes' },
+    { id: 'saves',
+      val: isAvg ? Math.round(avg(posts.map(p => p.saves).filter(v => v != null))) : sum(posts.map(p => p.saves)),
+      label: isAvg ? '평균 저장' : '전체 저장', daily: 'total_saves' },
+    { id: 'shares',
+      val: isAvg ? Math.round(avg(posts.map(p => p.shares).filter(v => v != null))) : sum(posts.map(p => p.shares)),
+      label: isAvg ? '평균 공유' : '전체 공유', daily: 'total_shares' },
+    { id: 'comments',
+      val: isAvg ? Math.round(avg(posts.map(p => p.comments).filter(v => v != null))) : sum(posts.map(p => p.comments)),
+      label: isAvg ? '평균 댓글' : '전체 댓글', daily: 'total_comments' },
+    { id: 'engagement',
+      val: isAvg ? Math.round(avg(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0)))) : sum(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0))),
+      label: isAvg ? '평균 참여' : '전체 참여', daily: 'total_engagement' },
+    { id: 'engagement_rate', val: engRates.length ? +avg(engRates).toFixed(1) : null, label: '평균 참여율', isPct: true, daily: 'avg_engagement_rate' },
+    { id: 'save_rate', val: saveRates.length ? +avg(saveRates).toFixed(1) : null, label: '평균 저장율', isPct: true, daily: 'avg_save_rate' },
+    { id: 'share_rate', val: shareRates.length ? +avg(shareRates).toFixed(1) : null, label: '평균 공유율', isPct: true, daily: 'avg_share_rate' },
+    { id: 'follows',
+      val: isAvg ? Math.round(avg(posts.map(p => p.follows || 0))) : sum(posts.map(p => p.follows || 0)),
+      label: isAvg ? '평균 팔로우 유입' : '팔로우 유입 합계' },
+    { id: 'top_post', val: null, label: 'TOP 게시물', isText: true },
+  ];
+
+  // Store for reference
+  window._kpiStatFields = statFields;
+  window._kpiDaily = daily;
+
   statFields.forEach(f => {
     const card = document.querySelector(`#kpi-stats-grid .kpi-card[data-stat="${f.id}"]`);
     const labelEl = document.getElementById(`kpi-stat-${f.id}-label`);
     const valueEl = document.getElementById(`kpi-total-${f.id}`);
-    // Visibility
     if (card) card.style.display = visibleStats.has(f.id) ? '' : 'none';
-    if (labelEl) labelEl.textContent = isAvg ? f.labelA : f.labelT;
+    if (labelEl) labelEl.textContent = f.label;
+
+    if (f.id === 'top_post') {
+      const top = posts.find(p => p.rank === 1) || (posts.length ? [...posts].sort((a,b) => (b.reach||0)-(a.reach||0))[0] : null);
+      if (valueEl) valueEl.textContent = top ? top.title : '-';
+      return;
+    }
+    if (f.id === 'followers') {
+      if (valueEl) valueEl.textContent = fmt(f.val);
+      // Show follower change
+      const changeEl = document.getElementById('kpi-followers-change');
+      if (changeEl && followers.length >= 2) {
+        const change = (followers[followers.length - 1].followers || 0) - (followers[followers.length - 2].followers || 0);
+        changeEl.textContent = (change >= 0 ? '+' : '') + fmt(change) + ' (전일 대비)';
+        changeEl.className = 'kpi-sub ' + (change >= 0 ? 'positive' : 'negative');
+      }
+      return;
+    }
     if (valueEl) {
-      const val = isAvg ? f.avgVal : f.sumVal;
-      const formatted = f.isPct ? fmtPct(val) : fmt(val);
-      valueEl.innerHTML = formatted + (isAvg ? '' : changeBadge(getDailyChange(daily, f.daily), f.isPct));
+      const formatted = f.isPct ? fmtPct(f.val) : fmt(f.val);
+      const showChange = isTotal && f.daily;
+      valueEl.innerHTML = formatted + (showChange ? changeBadge(getDailyChange(daily, f.daily), f.isPct) : '');
     }
   });
+}
+
+// Period selector UI for dropdown modes
+function updateKpiPeriodSelectors(mode) {
+  const container = document.getElementById('kpi-period-selectors');
+  container.innerHTML = '';
+  if (mode === 'total' || mode === 'avg') return;
+
+  const posts = filterByMilestone(DATA.posts);
+  const yms = getAvailableYearMonths();
+  if (!yms.length) return;
+
+  const latest = yms[0].split('-');
+  const years = [...new Set(yms.map(ym => ym.split('-')[0]))];
+
+  // Year selector
+  const yearSel = document.createElement('select');
+  yearSel.id = 'kpi-year';
+  years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y + '년'; yearSel.appendChild(o); });
+  yearSel.value = latest[0];
+  container.appendChild(yearSel);
+
+  if (mode === 'yearly') {
+    yearSel.addEventListener('change', () => refreshKpiForPeriod());
+    refreshKpiForPeriod();
+    return;
+  }
+
+  // Month selector
+  const monthSel = document.createElement('select');
+  monthSel.id = 'kpi-month';
+  const populateMonths = () => {
+    monthSel.innerHTML = '';
+    for (let m = 1; m <= 12; m++) {
+      const key = `${yearSel.value}-${String(m).padStart(2,'0')}`;
+      if (yms.includes(key)) { const o = document.createElement('option'); o.value = m; o.textContent = m + '월'; monthSel.appendChild(o); }
+    }
+    const lastOpt = monthSel.options[monthSel.options.length - 1];
+    if (lastOpt) monthSel.value = lastOpt.value;
+  };
+  populateMonths();
+  container.appendChild(monthSel);
+
+  if (mode === 'weekly') {
+    const addWeekSel = () => {
+      const old = document.getElementById('kpi-week');
+      if (old) old.remove();
+      const y = parseInt(yearSel.value);
+      const m = parseInt(monthSel.value) - 1;
+      const weeks = getWeeksInMonth(y, m);
+      const weekSel = document.createElement('select');
+      weekSel.id = 'kpi-week';
+      weeks.forEach((w, i) => { const o = document.createElement('option'); o.value = i; o.textContent = `${i+1}주 (${w.label})`; weekSel.appendChild(o); });
+      weekSel.value = String(weeks.length - 1);
+      container.appendChild(weekSel);
+      weekSel.addEventListener('change', () => refreshKpiForPeriod());
+    };
+    addWeekSel();
+    yearSel.addEventListener('change', () => { populateMonths(); addWeekSel(); refreshKpiForPeriod(); });
+    monthSel.addEventListener('change', () => { addWeekSel(); refreshKpiForPeriod(); });
+    refreshKpiForPeriod();
+    return;
+  }
+
+  if (mode === 'daily') {
+    const addDaySel = () => {
+      const old = document.getElementById('kpi-day');
+      if (old) old.remove();
+      const y = parseInt(yearSel.value);
+      const m = parseInt(monthSel.value) - 1;
+      const daysInMonth = new Date(y, m + 1, 0).getDate();
+      const daySel = document.createElement('select');
+      daySel.id = 'kpi-day';
+      const today = new Date();
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dt = new Date(y, m, d);
+        if (dt <= today) {
+          const dayChar = ['일','월','화','수','목','금','토'][dt.getDay()];
+          const o = document.createElement('option');
+          o.value = d;
+          o.textContent = `${d}일 (${dayChar})`;
+          daySel.appendChild(o);
+        }
+      }
+      const lastOpt = daySel.options[daySel.options.length - 1];
+      if (lastOpt) daySel.value = lastOpt.value;
+      container.appendChild(daySel);
+      daySel.addEventListener('change', () => refreshKpiForPeriod());
+    };
+    addDaySel();
+    yearSel.addEventListener('change', () => { populateMonths(); addDaySel(); refreshKpiForPeriod(); });
+    monthSel.addEventListener('change', () => { addDaySel(); refreshKpiForPeriod(); });
+    refreshKpiForPeriod();
+    return;
+  }
+
+  // monthly
+  yearSel.addEventListener('change', () => { populateMonths(); refreshKpiForPeriod(); });
+  monthSel.addEventListener('change', () => refreshKpiForPeriod());
+  refreshKpiForPeriod();
+}
+
+function refreshKpiForPeriod() {
+  const mode = currentKpiMode;
+  const posts = filterByMilestone(DATA.posts);
+  const yearEl = document.getElementById('kpi-year');
+  const monthEl = document.getElementById('kpi-month');
+  const weekEl = document.getElementById('kpi-week');
+  const dayEl = document.getElementById('kpi-day');
+  const year = yearEl ? parseInt(yearEl.value) : null;
+  const month = monthEl ? parseInt(monthEl.value) - 1 : null;
+  let periodIdx = 0;
+  if (mode === 'weekly') periodIdx = weekEl ? parseInt(weekEl.value) : 0;
+  if (mode === 'daily') periodIdx = dayEl ? parseInt(dayEl.value) : 1;
+  const filtered = groupPostsByPeriod(posts, mode, year, month, periodIdx);
+  renderKpiStats(mode, filtered);
 }
 
 // Stats column toggle UI
@@ -209,8 +424,7 @@ function renderStatsToggle() {
     cb.addEventListener('change', () => {
       if (cb.checked) visibleStats.add(id);
       else visibleStats.delete(id);
-      const mode = document.querySelector('#kpi-mode-toggle .toggle-btn.active')?.dataset.mode || 'total';
-      renderKpiStats(mode);
+      refreshKpiForPeriod();
     });
     label.appendChild(cb);
     label.appendChild(document.createTextNode(statLabels[id] || id));
@@ -218,13 +432,10 @@ function renderStatsToggle() {
   });
 }
 
-// KPI toggle binding (once)
-document.getElementById('kpi-mode-toggle')?.addEventListener('click', e => {
-  const btn = e.target.closest('.toggle-btn');
-  if (!btn || !btn.dataset.mode) return;
-  document.querySelectorAll('#kpi-mode-toggle .toggle-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderKpiStats(btn.dataset.mode);
+// KPI dropdown binding
+document.getElementById('kpi-mode-dropdown')?.addEventListener('change', function() {
+  currentKpiMode = this.value;
+  updateKpiPeriodSelectors(this.value);
 });
 
 // Stats toggle panel show/hide
@@ -352,53 +563,13 @@ function renderOverview() {
   const followers = filterFollowersByMilestone(DATA.followers);
   const daily = filterDailyByMilestone(DATA.daily);
 
-  // KPIs
-  document.getElementById('kpi-posts').textContent = fmt(posts.length);
-
-  const latestFollowers = followers.length ? followers[followers.length - 1].followers : null;
-  document.getElementById('kpi-followers').textContent = fmt(latestFollowers);
-  if (followers.length >= 2) {
-    const change = (followers[followers.length - 1].followers || 0) - (followers[followers.length - 2].followers || 0);
-    const el = document.getElementById('kpi-followers-change');
-    el.textContent = (change >= 0 ? '+' : '') + fmt(change) + ' (전일 대비)';
-    el.className = 'kpi-sub ' + (change >= 0 ? 'positive' : 'negative');
+  // Unified KPI Stats
+  const mode = currentKpiMode;
+  if (mode === 'total' || mode === 'avg') {
+    renderKpiStats(mode, posts);
+  } else {
+    updateKpiPeriodSelectors(mode);
   }
-
-  const engRates = posts.map(p => p.engagement_rate).filter(v => v != null);
-  document.getElementById('kpi-engagement').innerHTML = fmtPct(avg(engRates)) + changeBadge(getDailyChange(daily, 'avg_engagement_rate'), true);
-
-  const reaches = posts.map(p => p.reach).filter(v => v != null);
-  const avgReachVal = Math.round(avg(reaches));
-  const avgReachChange = daily.length >= 2 ? (() => {
-    const d1 = daily[daily.length - 1], d0 = daily[daily.length - 2];
-    if (d1.total_reach && d1.post_count && d0.total_reach && d0.post_count) {
-      return { change: Math.round(d1.total_reach / d1.post_count - d0.total_reach / d0.post_count) };
-    }
-    return null;
-  })() : null;
-  document.getElementById('kpi-reach').innerHTML = fmt(avgReachVal) + changeBadge(avgReachChange);
-
-  const top = posts.find(p => p.rank === 1);
-  document.getElementById('kpi-top').textContent = top ? top.title : '-';
-
-  // Total/Average stats with toggle
-  const statFields = [
-    { id: 'reach', sumVal: sum(posts.map(p => p.reach)), avgVal: Math.round(avg(posts.map(p => p.reach).filter(v => v != null))), daily: 'total_reach', labelT: '전체 도달', labelA: '평균 도달' },
-    { id: 'views', sumVal: sum(posts.map(p => p.views)), avgVal: Math.round(avg(posts.map(p => p.views).filter(v => v != null))), daily: 'total_views', labelT: '전체 조회수', labelA: '평균 조회수' },
-    { id: 'likes', sumVal: sum(posts.map(p => p.likes)), avgVal: Math.round(avg(posts.map(p => p.likes).filter(v => v != null))), daily: 'total_likes', labelT: '전체 좋아요', labelA: '평균 좋아요' },
-    { id: 'saves', sumVal: sum(posts.map(p => p.saves)), avgVal: Math.round(avg(posts.map(p => p.saves).filter(v => v != null))), daily: 'total_saves', labelT: '전체 저장', labelA: '평균 저장' },
-    { id: 'shares', sumVal: sum(posts.map(p => p.shares)), avgVal: Math.round(avg(posts.map(p => p.shares).filter(v => v != null))), daily: 'total_shares', labelT: '전체 공유', labelA: '평균 공유' },
-    { id: 'comments', sumVal: sum(posts.map(p => p.comments)), avgVal: Math.round(avg(posts.map(p => p.comments).filter(v => v != null))), daily: 'total_comments', labelT: '전체 댓글', labelA: '평균 댓글' },
-    { id: 'engagement', sumVal: sum(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0))), avgVal: Math.round(avg(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0)))), daily: 'total_engagement', labelT: '전체 참여', labelA: '평균 참여' },
-    { id: 'share_rate', isPct: true, sumVal: +avg(posts.map(p => p.share_rate).filter(v => v != null)).toFixed(1), avgVal: +avg(posts.map(p => p.share_rate).filter(v => v != null)).toFixed(1), daily: 'avg_share_rate', labelT: '평균 공유율', labelA: '평균 공유율' },
-    { id: 'follows', sumVal: sum(posts.map(p => p.follows || 0)), avgVal: Math.round(avg(posts.map(p => p.follows || 0))), daily: null, labelT: '전체 팔로우', labelA: '평균 팔로우' },
-  ];
-  // Store for toggle re-use
-  window._kpiStatFields = statFields;
-  window._kpiDaily = daily;
-
-  const kpiMode = document.querySelector('#kpi-mode-toggle .toggle-btn.active')?.dataset.mode || 'total';
-  renderKpiStats(kpiMode);
 
   // Follower trend chart (last 30 days from daily report or follower data)
   document.getElementById('chart-follower-trend').innerHTML = '';
@@ -435,10 +606,10 @@ function renderOverview() {
   renderDowChart('all');
 
   // ── Marketer KPIs ──
-  const saveRates = posts.map(p => p.save_rate).filter(v => v != null);
-  const shareRates = posts.map(p => p.share_rate).filter(v => v != null);
-  document.getElementById('kpi-avg-save-rate').innerHTML = fmtPct(avg(saveRates)) + changeBadge(getDailyChange(daily, 'avg_save_rate'), true);
-  document.getElementById('kpi-avg-share-rate').innerHTML = fmtPct(avg(shareRates)) + changeBadge(getDailyChange(daily, 'avg_share_rate'), true);
+  const mSaveRates = posts.map(p => p.save_rate).filter(v => v != null);
+  const mShareRates = posts.map(p => p.share_rate).filter(v => v != null);
+  document.getElementById('kpi-avg-save-rate').innerHTML = fmtPct(avg(mSaveRates)) + changeBadge(getDailyChange(daily, 'avg_save_rate'), true);
+  document.getElementById('kpi-avg-share-rate').innerHTML = fmtPct(avg(mShareRates)) + changeBadge(getDailyChange(daily, 'avg_share_rate'), true);
 
   const avgEngPerPost = posts.length ? Math.round(sum(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0))) / posts.length) : 0;
   const engPerPostChange = daily.length >= 2 ? (() => {
@@ -450,7 +621,9 @@ function renderOverview() {
   })() : null;
   document.getElementById('kpi-avg-engagement-per-post').innerHTML = fmt(avgEngPerPost) + changeBadge(engPerPostChange);
 
-  const reachRate = latestFollowers ? (avg(reaches) / latestFollowers * 100) : 0;
+  const mReaches = posts.map(p => p.reach).filter(v => v != null);
+  const mLatestFollowers = followers.length ? followers[followers.length - 1].followers : null;
+  const reachRate = mLatestFollowers ? (avg(mReaches) / mLatestFollowers * 100) : 0;
   document.getElementById('kpi-reach-rate').textContent = fmtPct(reachRate);
 
   // ── Contribution Analysis (운영 기여도) ──

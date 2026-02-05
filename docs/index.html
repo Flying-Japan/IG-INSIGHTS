@@ -51,41 +51,32 @@
 
     <!-- 1. Overview Tab -->
     <section id="tab-overview" class="tab-content active">
-      <div class="kpi-grid kpi-grid-5">
-        <div class="kpi-card">
-          <div class="kpi-label">총 게시물</div>
-          <div class="kpi-value" id="kpi-posts">-</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">현재 팔로워</div>
-          <div class="kpi-value" id="kpi-followers">-</div>
-          <div class="kpi-sub" id="kpi-followers-change"></div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">평균 참여율</div>
-          <div class="kpi-value" id="kpi-engagement">-</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">평균 도달</div>
-          <div class="kpi-value" id="kpi-reach">-</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">TOP 게시물</div>
-          <div class="kpi-value kpi-value-sm" id="kpi-top">-</div>
-        </div>
-      </div>
       <div class="kpi-stats-section">
         <div class="kpi-stats-header">
-          <div class="toggle-group" id="kpi-mode-toggle">
-            <button class="toggle-btn active" data-mode="total">합계</button>
-            <button class="toggle-btn" data-mode="avg">평균</button>
-          </div>
+          <select class="kpi-mode-dropdown" id="kpi-mode-dropdown">
+            <option value="total">합계</option>
+            <option value="avg">평균</option>
+            <option value="yearly">년도별</option>
+            <option value="monthly">월별</option>
+            <option value="weekly">주별</option>
+            <option value="daily">일별</option>
+          </select>
+          <div class="kpi-period-selectors" id="kpi-period-selectors"></div>
           <button class="col-toggle-btn" id="stats-toggle-btn" title="표시할 항목 선택">⚙ 항목</button>
         </div>
         <div class="col-toggle-panel" id="stats-toggle-panel" style="display:none">
           <div class="col-toggle-list" id="stats-toggle-list"></div>
         </div>
         <div class="kpi-grid kpi-stats-grid" id="kpi-stats-grid">
+          <div class="kpi-card" data-stat="posts">
+            <div class="kpi-label" id="kpi-stat-posts-label">총 게시물</div>
+            <div class="kpi-value" id="kpi-total-posts">-</div>
+          </div>
+          <div class="kpi-card" data-stat="followers">
+            <div class="kpi-label" id="kpi-stat-followers-label">현재 팔로워</div>
+            <div class="kpi-value" id="kpi-total-followers">-</div>
+            <div class="kpi-sub" id="kpi-followers-change"></div>
+          </div>
           <div class="kpi-card" data-stat="reach">
             <div class="kpi-label" id="kpi-stat-reach-label">전체 도달</div>
             <div class="kpi-value" id="kpi-total-reach">-</div>
@@ -114,13 +105,25 @@
             <div class="kpi-label" id="kpi-stat-engagement-label">전체 참여</div>
             <div class="kpi-value" id="kpi-total-engagement">-</div>
           </div>
+          <div class="kpi-card" data-stat="engagement_rate">
+            <div class="kpi-label" id="kpi-stat-engagement_rate-label">평균 참여율</div>
+            <div class="kpi-value" id="kpi-total-engagement_rate">-</div>
+          </div>
+          <div class="kpi-card" data-stat="save_rate">
+            <div class="kpi-label" id="kpi-stat-save_rate-label">평균 저장율</div>
+            <div class="kpi-value" id="kpi-total-save_rate">-</div>
+          </div>
           <div class="kpi-card" data-stat="share_rate">
             <div class="kpi-label" id="kpi-stat-share_rate-label">평균 공유율</div>
             <div class="kpi-value" id="kpi-total-share_rate">-</div>
           </div>
           <div class="kpi-card" data-stat="follows">
-            <div class="kpi-label" id="kpi-stat-follows-label">전체 팔로우</div>
+            <div class="kpi-label" id="kpi-stat-follows-label">팔로우 유입</div>
             <div class="kpi-value" id="kpi-total-follows">-</div>
+          </div>
+          <div class="kpi-card" data-stat="top_post">
+            <div class="kpi-label" id="kpi-stat-top_post-label">TOP 게시물</div>
+            <div class="kpi-value kpi-value-sm" id="kpi-total-top_post">-</div>
           </div>
         </div>
       </div>

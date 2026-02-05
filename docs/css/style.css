@@ -235,8 +235,57 @@ body {
 .kpi-stats-section .kpi-grid {
   margin-bottom: 0;
 }
+.kpi-stats-grid .kpi-value {
+  font-size: 20px;
+}
 .kpi-stats-grid {
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+}
+/* KPI Mode Dropdown */
+.kpi-mode-dropdown {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 30px 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239499b3' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: all 0.2s;
+}
+.kpi-mode-dropdown:hover,
+.kpi-mode-dropdown:focus {
+  border-color: var(--accent3);
+  outline: none;
+}
+.kpi-mode-dropdown option {
+  background: var(--bg2);
+  color: var(--text);
+}
+.kpi-period-selectors {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.kpi-period-selectors select {
+  padding: 5px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg3);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+}
+.kpi-period-selectors select:focus {
+  border-color: var(--accent3);
 }
 .kpi-stats-grid .kpi-card[style*="display: none"] + .kpi-card {
   /* handled by JS display toggle */
@@ -256,6 +305,10 @@ body {
 .kpi-value {
   font-size: 24px;
   font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 .kpi-value-sm {
   font-size: 14px;
