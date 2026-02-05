@@ -1823,47 +1823,16 @@ function renderFollowers() {
   }
 
   const latest = allFollowers[allFollowers.length - 1];
+  const first = allFollowers[0];
 
-  // 총 성장: 25.12.26 기점 기준 (운영 시작일)
-  // posts 데이터에서 25.12.26 시점의 팔로워 수 추정
-  const milestoneDate = new Date(2025, 11, 26); // 2025-12-26
-  let baselineFollowers = null;
+  // 총 성장: 팔로워 추적 첫 데이터 기준
+  const totalGrowth = (latest.followers || 0) - (first.followers || 0);
 
-  // 1) 팔로워 추적 데이터에서 기준일 이전 가장 가까운 값 찾기
-  for (let i = allFollowers.length - 1; i >= 0; i--) {
-    const p = parseFollowerDate(allFollowers[i].date);
-    if (p && p.dateObj <= milestoneDate) {
-      baselineFollowers = allFollowers[i].followers;
-      break;
-    }
-  }
-
-  // 2) 없으면 posts 데이터에서 25.12.26 근처 팔로워 수 찾기
-  if (baselineFollowers === null && DATA.posts && DATA.posts.length) {
-    const milestonePosts = DATA.posts.filter(p => {
-      const d = parseUploadDate(p.upload_date);
-      return d && d.getTime() <= milestoneDate.getTime() + 86400000; // +1일 여유
-    }).sort((a, b) => {
-      const da = parseUploadDate(a.upload_date);
-      const db = parseUploadDate(b.upload_date);
-      return db - da;
-    });
-    if (milestonePosts.length && milestonePosts[0].followers) {
-      baselineFollowers = milestonePosts[0].followers;
-    }
-  }
-
-  // 3) 그래도 없으면 팔로워 추적 첫 번째 데이터 사용
-  if (baselineFollowers === null) {
-    baselineFollowers = allFollowers[0].followers || 0;
-  }
-
-  const totalGrowth = (latest.followers || 0) - baselineFollowers;
-
-  // 일평균 성장: 25.12.26부터 현재까지 일수 기준
+  // 일평균 성장: 추적 기간 일수 기준
+  const firstParsed = parseFollowerDate(first.date);
   const latestParsed = parseFollowerDate(latest.date);
-  const daysSinceMilestone = latestParsed ? Math.max(1, Math.round((latestParsed.dateObj - milestoneDate) / 86400000)) : allFollowers.length - 1 || 1;
-  const avgGrowth = totalGrowth / daysSinceMilestone;
+  const trackingDays = (firstParsed && latestParsed) ? Math.max(1, Math.round((latestParsed.dateObj - firstParsed.dateObj) / 86400000)) : Math.max(1, allFollowers.length - 1);
+  const avgGrowth = totalGrowth / trackingDays;
 
   document.getElementById('kpi-total-growth').textContent = (totalGrowth >= 0 ? '+' : '') + fmt(totalGrowth);
   document.getElementById('kpi-avg-growth').textContent = (avgGrowth >= 0 ? '+' : '') + avgGrowth.toFixed(1) + '/일';
