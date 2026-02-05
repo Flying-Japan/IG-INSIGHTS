@@ -173,7 +173,7 @@ const statLabels = {
   posts: '게시물', followers: '팔로워', reach: '도달', views: '조회수',
   likes: '좋아요', saves: '저장', shares: '공유', comments: '댓글',
   engagement: '참여', engagement_rate: '참여율', save_rate: '저장율',
-  share_rate: '공유율', follows: '팔로우 유입', top_post: 'TOP 게시물',
+  share_rate: '공유율', follows: '팔로우 유입 (릴스제외)', top_post: 'TOP 게시물',
 };
 let visibleStats = new Set(statIds);
 let currentKpiMode = 'total';
@@ -256,7 +256,7 @@ function renderKpiStats(mode, periodPosts) {
     { id: 'share_rate', val: shareRates.length ? +avg(shareRates).toFixed(1) : null, label: '평균 공유율', isPct: true, daily: 'avg_share_rate' },
     { id: 'follows',
       val: isAvg ? Math.round(avg(posts.map(p => p.follows || 0))) : sum(posts.map(p => p.follows || 0)),
-      label: isAvg ? '평균 팔로우 유입' : '팔로우 유입 합계' },
+      label: isAvg ? '평균 팔로우 유입 (릴스제외)' : '팔로우 유입 합계 (릴스제외)' },
     { id: 'top_post', val: null, label: 'TOP 게시물', isText: true },
   ];
 

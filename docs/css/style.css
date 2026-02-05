@@ -249,7 +249,7 @@ body {
   margin-top: 3px;
 }
 .kpi-stats-grid {
-  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)) !important;
+  grid-template-columns: repeat(7, 1fr) !important;
 }
 /* Drag handle for KPI cards */
 .kpi-stats-grid .kpi-card {
