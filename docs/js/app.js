@@ -36,85 +36,113 @@ function changeBadge(changeObj, isRate = false) {
   return ` <span class="kpi-change ${cls}">${val}</span>`;
 }
 
-// ── 팔로워 변화 계산 (전일/전주/전월/전년) ──
-function calcFollowerChanges(followers) {
-  if (!followers || followers.length < 2) return null;
-  const latest = followers[followers.length - 1];
-  const latestDate = parseUploadDate(latest.date);
-  const latestVal = latest.followers || 0;
-  if (!latestDate) return null;
+// ── 팔로우 유입 기간별 비교 (전일/전주/전월/전년) ──
+// posts의 follows 필드를 기간별로 합산하여 비교
+function calcFollowsChanges(posts, followers) {
+  if (!posts || !posts.length) return null;
 
-  // 특정 기간 경계의 마지막 기록 찾기
-  // 예: "전년 말" = 작년 12/31 이전의 가장 마지막 기록
-  function findLastBefore(cutoffDate) {
-    let best = null; let bestDate = null;
-    for (let i = 0; i < followers.length; i++) {
-      const d = parseUploadDate(followers[i].date);
-      if (!d || d >= cutoffDate) continue;
-      if (!bestDate || d > bestDate) { best = followers[i]; bestDate = d; }
-    }
-    return best ? { entry: best, date: bestDate } : null;
+  // 날짜 파싱된 포스트 목록
+  const dated = posts.map(p => ({ ...p, _d: parseUploadDate(p.upload_date) })).filter(p => p._d);
+  if (!dated.length) return null;
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+  const dow = now.getDay();
+
+  // 기간별 팔로우 유입 합산
+  function sumFollows(startDate, endDate) {
+    return dated.filter(p => p._d >= startDate && p._d < endDate)
+      .reduce((s, p) => s + (p.follows || 0), 0);
   }
 
-  function makeResult(ref) {
-    if (!ref) return { available: false };
-    const rv = ref.entry.followers || 0;
-    return { change: latestVal - rv, pct: rv ? ((latestVal - rv) / rv * 100) : 0, from: rv, available: true };
+  function countPosts(startDate, endDate) {
+    return dated.filter(p => p._d >= startDate && p._d < endDate).length;
   }
 
   const results = {};
-  const y = latestDate.getFullYear();
-  const m = latestDate.getMonth();
-  const d = latestDate.getDate();
-  const dow = latestDate.getDay(); // 0=일 ~ 6=토
 
-  // 전일: 오늘 이전의 마지막 기록 (= 어제 또는 가장 최근 이전)
+  // 현재 팔로워 수 (followers.json에서)
+  const latestF = followers && followers.length ? followers[followers.length - 1] : null;
+  results.current = latestF ? (latestF.followers || 0) : null;
+
+  // ── 전일 vs 오늘 ──
   const todayStart = new Date(y, m, d);
-  results.daily = makeResult(findLastBefore(todayStart));
+  const yesterdayStart = new Date(y, m, d - 1);
+  const todayFollows = sumFollows(todayStart, new Date(y, m, d + 1));
+  const yesterdayFollows = sumFollows(yesterdayStart, todayStart);
+  if (countPosts(yesterdayStart, todayStart) > 0 || countPosts(todayStart, new Date(y, m, d + 1)) > 0) {
+    results.daily = { current: todayFollows, prev: yesterdayFollows, change: todayFollows - yesterdayFollows, available: true, currentLabel: '오늘', prevLabel: '어제' };
+  } else {
+    // 데이터 없으면 followers.json 기반으로 전일 대비
+    if (followers && followers.length >= 2) {
+      const cur = followers[followers.length - 1].followers || 0;
+      const prev = followers[followers.length - 2].followers || 0;
+      results.daily = { current: cur, prev: prev, change: cur - prev, available: true, currentLabel: '오늘', prevLabel: '어제', isFollowerCount: true };
+    } else {
+      results.daily = { available: false };
+    }
+  }
 
-  // 전주: 이번 주 월요일 자정 이전의 마지막 기록
+  // ── 전주 vs 이번주 ──
   const thisMonday = new Date(y, m, d - ((dow + 6) % 7));
-  results.weekly = makeResult(findLastBefore(thisMonday));
+  const lastMonday = new Date(thisMonday); lastMonday.setDate(lastMonday.getDate() - 7);
+  const thisWeekFollows = sumFollows(thisMonday, new Date(y, m, d + 1));
+  const lastWeekFollows = sumFollows(lastMonday, thisMonday);
+  if (countPosts(lastMonday, thisMonday) > 0 || countPosts(thisMonday, new Date(y, m, d + 1)) > 0) {
+    results.weekly = { current: thisWeekFollows, prev: lastWeekFollows, change: thisWeekFollows - lastWeekFollows, available: true, currentLabel: '이번주', prevLabel: '지난주' };
+  } else { results.weekly = { available: false }; }
 
-  // 전월: 이번 달 1일 자정 이전의 마지막 기록 (= 지난달 말 팔로워)
+  // ── 전월 vs 이번달 ──
   const thisMonth1st = new Date(y, m, 1);
-  results.monthly = makeResult(findLastBefore(thisMonth1st));
+  const lastMonth1st = new Date(y, m - 1, 1);
+  const thisMonthFollows = sumFollows(thisMonth1st, new Date(y, m, d + 1));
+  const lastMonthFollows = sumFollows(lastMonth1st, thisMonth1st);
+  if (countPosts(lastMonth1st, thisMonth1st) > 0 || countPosts(thisMonth1st, new Date(y, m, d + 1)) > 0) {
+    results.monthly = { current: thisMonthFollows, prev: lastMonthFollows, change: thisMonthFollows - lastMonthFollows, available: true, currentLabel: `${m + 1}월`, prevLabel: `${m === 0 ? 12 : m}월` };
+  } else { results.monthly = { available: false }; }
 
-  // 전년: 올해 1/1 자정 이전의 마지막 기록 (= 작년 말 팔로워)
+  // ── 전년 vs 올해 ──
   const thisYear1st = new Date(y, 0, 1);
-  results.yearly = makeResult(findLastBefore(thisYear1st));
+  const lastYear1st = new Date(y - 1, 0, 1);
+  const thisYearFollows = sumFollows(thisYear1st, new Date(y, m, d + 1));
+  const lastYearFollows = sumFollows(lastYear1st, thisYear1st);
+  if (countPosts(lastYear1st, thisYear1st) > 0 || countPosts(thisYear1st, new Date(y, m, d + 1)) > 0) {
+    results.yearly = { current: thisYearFollows, prev: lastYearFollows, change: thisYearFollows - lastYearFollows, available: true, currentLabel: `${y}년`, prevLabel: `${y - 1}년` };
+  } else { results.yearly = { available: false }; }
 
-  results.current = latestVal;
   return results;
 }
 
-function followerChangeBadge(label, data) {
+function followChangeBadge(label, data) {
   if (!data || !data.available) return `<span class="fc-item fc-na"><span class="fc-label">${label}</span><span class="fc-val">—</span></span>`;
   const sign = data.change >= 0 ? '+' : '';
-  const cls = data.change >= 0 ? 'positive' : 'negative';
-  return `<span class="fc-item ${cls}"><span class="fc-label">${label}</span><span class="fc-val">${sign}${fmt(data.change)}</span><span class="fc-pct">(${sign}${data.pct.toFixed(1)}%)</span></span>`;
+  const cls = data.change > 0 ? 'positive' : data.change < 0 ? 'negative' : '';
+  const detail = data.isFollowerCount ? '' : `<span class="fc-detail">${data.prevLabel} ${fmt(data.prev)} → ${data.currentLabel} ${fmt(data.current)}</span>`;
+  return `<span class="fc-item ${cls}"><span class="fc-label">${label}</span><span class="fc-val">${sign}${fmt(data.change)}</span>${detail}</span>`;
 }
 
 // ── 팔로워 상단 배너 ──
 function renderFollowerBanner() {
   const banner = document.getElementById('follower-banner');
   if (!banner) return;
-  const followers = DATA.followers;
-  const changes = calcFollowerChanges(followers);
+  const posts = DATA.posts || [];
+  const followers = DATA.followers || [];
+  const changes = calcFollowsChanges(posts, followers);
   if (!changes) { banner.style.display = 'none'; return; }
 
   banner.style.display = '';
-  const lastEntry = followers[followers.length - 1];
-  const dataDate = lastEntry ? lastEntry.date.replace(/\(.\)/, '') : '';
   const metaTime = DATA.meta && DATA.meta.updated_at_ko ? DATA.meta.updated_at_ko : '';
+  const currentHtml = changes.current ? `<span class="fb-current">👥 팔로워 <strong>${fmt(changes.current)}</strong></span><span class="fb-divider">|</span>` : '';
   banner.innerHTML =
-    `<span class="fb-current">👥 팔로워 <strong>${fmt(changes.current)}</strong></span>` +
-    `<span class="fb-divider">|</span>` +
-    followerChangeBadge('전일', changes.daily) +
-    followerChangeBadge('전주', changes.weekly) +
-    followerChangeBadge('전월', changes.monthly) +
-    followerChangeBadge('전년', changes.yearly) +
-    `<span class="fb-date">기준: ${metaTime || dataDate}</span>`;
+    currentHtml +
+    `<span class="fb-section-label">팔로우 유입</span>` +
+    followChangeBadge('전일', changes.daily) +
+    followChangeBadge('전주', changes.weekly) +
+    followChangeBadge('전월', changes.monthly) +
+    followChangeBadge('전년', changes.yearly) +
+    `<span class="fb-date">기준: ${metaTime}</span>`;
 }
 
 // ── Milestone Filter ──
@@ -487,16 +515,16 @@ function renderKpiStats(mode, periodPosts) {
     }
     if (f.id === 'followers') {
       if (valueEl) valueEl.textContent = fmt(f.val);
-      // Show follower changes (전일/전주/전월/전년)
+      // Show follower changes (전일/전주/전월/전년) - 팔로우 유입 기준
       const changeEl = document.getElementById('kpi-followers-change');
       if (changeEl) {
-        const changes = calcFollowerChanges(followers);
+        const changes = calcFollowsChanges(posts, followers);
         if (changes) {
           changeEl.innerHTML =
-            followerChangeBadge('전일', changes.daily) +
-            followerChangeBadge('전주', changes.weekly) +
-            followerChangeBadge('전월', changes.monthly) +
-            followerChangeBadge('전년', changes.yearly);
+            followChangeBadge('전일', changes.daily) +
+            followChangeBadge('전주', changes.weekly) +
+            followChangeBadge('전월', changes.monthly) +
+            followChangeBadge('전년', changes.yearly);
           changeEl.className = 'kpi-sub kpi-follower-changes';
         }
       }

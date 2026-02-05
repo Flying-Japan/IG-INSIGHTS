@@ -1141,10 +1141,17 @@ body {
   font-size: 10px;
   opacity: 0.7;
 }
-.fc-days {
+.fb-section-label {
+  font-size: 11px;
+  color: var(--text2);
+  font-weight: 500;
+  margin-right: 2px;
+}
+.fc-detail {
   font-size: 9px;
   opacity: 0.6;
-  margin-left: 2px;
+  margin-left: 3px;
+  white-space: nowrap;
 }
 .fb-date {
   margin-left: auto;
