@@ -36,6 +36,88 @@ function changeBadge(changeObj, isRate = false) {
   return ` <span class="kpi-change ${cls}">${val}</span>`;
 }
 
+// ── 팔로워 변화 계산 (전일/전주/전월/전년) ──
+function calcFollowerChanges(followers) {
+  if (!followers || followers.length < 2) return null;
+  const latest = followers[followers.length - 1];
+  const latestDate = parseUploadDate(latest.date);
+  const latestVal = latest.followers || 0;
+  if (!latestDate) return null;
+
+  function findClosest(targetDate) {
+    let best = null; let bestDiff = Infinity;
+    for (let i = followers.length - 2; i >= 0; i--) {
+      const d = parseUploadDate(followers[i].date);
+      if (!d) continue;
+      const diff = Math.abs(d - targetDate);
+      if (diff < bestDiff) { bestDiff = diff; best = followers[i]; }
+    }
+    // 허용 범위: 목표일 ±3일 이내
+    if (best && bestDiff <= 3 * 86400000) return best;
+    return null;
+  }
+
+  const results = {};
+  // 전일 대비
+  const prev = followers[followers.length - 2];
+  if (prev) {
+    const pv = prev.followers || 0;
+    results.daily = { change: latestVal - pv, pct: pv ? ((latestVal - pv) / pv * 100) : 0, available: true };
+  } else { results.daily = { available: false }; }
+
+  // 전주 대비 (7일 전)
+  const weekAgo = new Date(latestDate); weekAgo.setDate(weekAgo.getDate() - 7);
+  const weekEntry = findClosest(weekAgo);
+  if (weekEntry) {
+    const wv = weekEntry.followers || 0;
+    results.weekly = { change: latestVal - wv, pct: wv ? ((latestVal - wv) / wv * 100) : 0, available: true };
+  } else { results.weekly = { available: false }; }
+
+  // 전월 대비 (30일 전)
+  const monthAgo = new Date(latestDate); monthAgo.setMonth(monthAgo.getMonth() - 1);
+  const monthEntry = findClosest(monthAgo);
+  if (monthEntry) {
+    const mv = monthEntry.followers || 0;
+    results.monthly = { change: latestVal - mv, pct: mv ? ((latestVal - mv) / mv * 100) : 0, available: true };
+  } else { results.monthly = { available: false }; }
+
+  // 전년 대비 (365일 전)
+  const yearAgo = new Date(latestDate); yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+  const yearEntry = findClosest(yearAgo);
+  if (yearEntry) {
+    const yv = yearEntry.followers || 0;
+    results.yearly = { change: latestVal - yv, pct: yv ? ((latestVal - yv) / yv * 100) : 0, available: true };
+  } else { results.yearly = { available: false }; }
+
+  results.current = latestVal;
+  return results;
+}
+
+function followerChangeBadge(label, data) {
+  if (!data || !data.available) return `<span class="fc-item fc-na"><span class="fc-label">${label}</span><span class="fc-val">—</span></span>`;
+  const sign = data.change >= 0 ? '+' : '';
+  const cls = data.change >= 0 ? 'positive' : 'negative';
+  return `<span class="fc-item ${cls}"><span class="fc-label">${label}</span><span class="fc-val">${sign}${fmt(data.change)}</span><span class="fc-pct">(${sign}${data.pct.toFixed(1)}%)</span></span>`;
+}
+
+// ── 팔로워 상단 배너 ──
+function renderFollowerBanner() {
+  const banner = document.getElementById('follower-banner');
+  if (!banner) return;
+  const followers = DATA.followers;
+  const changes = calcFollowerChanges(followers);
+  if (!changes) { banner.style.display = 'none'; return; }
+
+  banner.style.display = '';
+  banner.innerHTML =
+    `<span class="fb-current">👥 팔로워 <strong>${fmt(changes.current)}</strong></span>` +
+    `<span class="fb-divider">|</span>` +
+    followerChangeBadge('전일', changes.daily) +
+    followerChangeBadge('전주', changes.weekly) +
+    followerChangeBadge('전월', changes.monthly) +
+    followerChangeBadge('전년', changes.yearly);
+}
+
 // ── Milestone Filter ──
 const MILESTONE_DATE = new Date(2025, 11, 26); // 2025-12-26
 let milestoneFilter = 'all'; // 'all' | 'before' | 'after'
@@ -165,6 +247,7 @@ function renderAll() {
   renderFollowers();
   renderCategory();
   renderContent();
+  renderFollowerBanner();
 }
 
 // ── KPI Stats (Unified with dropdown modes) ──
@@ -405,12 +488,18 @@ function renderKpiStats(mode, periodPosts) {
     }
     if (f.id === 'followers') {
       if (valueEl) valueEl.textContent = fmt(f.val);
-      // Show follower change
+      // Show follower changes (전일/전주/전월/전년)
       const changeEl = document.getElementById('kpi-followers-change');
-      if (changeEl && followers.length >= 2) {
-        const change = (followers[followers.length - 1].followers || 0) - (followers[followers.length - 2].followers || 0);
-        changeEl.textContent = (change >= 0 ? '+' : '') + fmt(change) + ' (전일 대비)';
-        changeEl.className = 'kpi-sub ' + (change >= 0 ? 'positive' : 'negative');
+      if (changeEl) {
+        const changes = calcFollowerChanges(followers);
+        if (changes) {
+          changeEl.innerHTML =
+            followerChangeBadge('전일', changes.daily) +
+            followerChangeBadge('전주', changes.weekly) +
+            followerChangeBadge('전월', changes.monthly) +
+            followerChangeBadge('전년', changes.yearly);
+          changeEl.className = 'kpi-sub kpi-follower-changes';
+        }
       }
       return;
     }

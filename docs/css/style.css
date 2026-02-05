@@ -1086,6 +1086,82 @@ body {
 .diag-text { font-size: 13px; color: var(--text); line-height: 1.6; }
 
 /* ── Responsive ── */
+/* ── Follower Banner ── */
+.follower-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 32px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.fb-current {
+  color: var(--text1);
+  font-size: 14px;
+}
+.fb-current strong {
+  font-size: 16px;
+  color: var(--accent);
+}
+.fb-divider {
+  color: var(--text3);
+  opacity: 0.4;
+}
+.fc-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.fc-item.positive {
+  background: rgba(0, 200, 83, 0.1);
+  color: var(--green);
+}
+.fc-item.negative {
+  background: rgba(255, 82, 82, 0.1);
+  color: var(--red);
+}
+.fc-item.fc-na {
+  color: var(--text3);
+  background: rgba(255,255,255,0.04);
+}
+.fc-label {
+  font-weight: 500;
+  opacity: 0.8;
+}
+.fc-val {
+  font-weight: 700;
+}
+.fc-pct {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* KPI card follower changes */
+.kpi-follower-changes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  justify-content: center;
+}
+.kpi-follower-changes .fc-item {
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+.kpi-follower-changes .fc-label {
+  font-size: 9px;
+}
+.kpi-follower-changes .fc-pct {
+  font-size: 9px;
+}
+
 @media (max-width: 768px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .kpi-grid-3 { grid-template-columns: repeat(2, 1fr); }
@@ -1101,4 +1177,7 @@ body {
   .milestone-bar { flex-wrap: wrap; padding: 8px 16px; gap: 8px; }
   .milestone-btn { padding: 5px 10px; font-size: 11px; }
   .milestone-date { font-size: 10px; }
+  .follower-banner { padding: 8px 16px; gap: 8px; font-size: 11px; }
+  .fb-current { font-size: 12px; }
+  .fb-current strong { font-size: 13px; }
 }
