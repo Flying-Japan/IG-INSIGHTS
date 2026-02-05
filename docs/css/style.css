@@ -1224,6 +1224,27 @@ body {
 .tabulator .tabulator-footer .tabulator-page-size { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 4px 8px; }
 .tabulator .tabulator-footer .tabulator-pages { gap: 2px; }
 
+/* ── 팔로워 월 선택 컨트롤 ── */
+.follower-month-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.follower-period-select {
+  padding: 5px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg3);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+.follower-period-select:hover,
+.follower-period-select:focus { border-color: var(--accent3); }
+
 /* ── 기간 셀렉터 통일 ── */
 .period-selector select,
 .dow-mode-group select,

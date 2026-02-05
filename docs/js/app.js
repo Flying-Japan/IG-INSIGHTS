@@ -1595,66 +1595,207 @@ function applyFilters() {
 // ══════════════════════════════════════════════════
 // TAB 3: Followers
 // ══════════════════════════════════════════════════
-function renderFollowers() {
-  const followers = filterFollowersByMilestone(DATA.followers);
-  if (!followers.length) {
-    document.getElementById('kpi-total-growth').textContent = '-';
-    document.getElementById('kpi-avg-growth').textContent = '-';
-    document.getElementById('kpi-current-followers').textContent = '-';
-    document.getElementById('kpi-best-day').textContent = '-';
-    document.getElementById('chart-follower-full').innerHTML = '';
-    document.getElementById('chart-follower-change').innerHTML = '';
-    return;
-  }
 
-  const latest = followers[followers.length - 1];
-  const first = followers[0];
-  const totalGrowth = (latest.followers || 0) - (first.followers || 0);
-  const avgGrowth = followers.length > 1 ? totalGrowth / (followers.length - 1) : 0;
+// 팔로워 월 선택 상태
+let followerSelectedYear = null;
+let followerSelectedMonth = null;
 
-  document.getElementById('kpi-total-growth').textContent = (totalGrowth >= 0 ? '+' : '') + fmt(totalGrowth);
-  document.getElementById('kpi-avg-growth').textContent = (avgGrowth >= 0 ? '+' : '') + avgGrowth.toFixed(1) + '/일';
-  document.getElementById('kpi-current-followers').textContent = fmt(latest.followers);
+function parseFollowerDate(str) {
+  // "26.01.30(금)" → { year: 2026, month: 1, day: 30, dateObj: Date }
+  const m = str.match(/(\d{2})\.(\d{2})\.(\d{2})/);
+  if (!m) return null;
+  const y = 2000 + parseInt(m[1]);
+  const mo = parseInt(m[2]);
+  const d = parseInt(m[3]);
+  return { year: y, month: mo, day: d, dateObj: new Date(y, mo - 1, d) };
+}
 
-  // Calculate daily changes
-  const changes = followers.map((f, i) => {
-    if (i === 0) return { date: f.date, change: 0 };
-    const change = (f.followers || 0) - (followers[i - 1].followers || 0);
-    return { date: f.date, change };
+function getFollowerMonths(followers) {
+  // 팔로워 데이터에서 사용 가능한 년/월 목록 추출
+  const monthSet = new Map();
+  followers.forEach(f => {
+    const p = parseFollowerDate(f.date);
+    if (!p) return;
+    const key = `${p.year}-${String(p.month).padStart(2, '0')}`;
+    if (!monthSet.has(key)) monthSet.set(key, { year: p.year, month: p.month });
+  });
+  return Array.from(monthSet.values()).sort((a, b) => a.year - b.year || a.month - b.month);
+}
+
+function filterFollowersByMonth(followers, year, month) {
+  if (!year || !month) return followers;
+  return followers.filter(f => {
+    const p = parseFollowerDate(f.date);
+    return p && p.year === year && p.month === month;
+  });
+}
+
+function fillMonthDays(filtered, year, month) {
+  // 선택된 월의 1일~말일까지 31일치 틀을 만들고, 데이터가 있는 날만 채움
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+  const dataMap = {};
+  filtered.forEach(f => {
+    const p = parseFollowerDate(f.date);
+    if (p) dataMap[p.day] = f;
   });
 
-  const best = changes.reduce((a, b) => (b.change > a.change ? b : a), changes[0]);
-  document.getElementById('kpi-best-day').textContent = best.date + ' (+' + fmt(best.change) + ')';
+  const result = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(year, month - 1, d);
+    const yy = String(year).slice(2);
+    const mm = String(month).padStart(2, '0');
+    const dd = String(d).padStart(2, '0');
+    const dayLabel = `${yy}.${mm}.${dd}(${dayNames[dt.getDay()]})`;
+    if (dataMap[d]) {
+      result.push({ ...dataMap[d], date: dayLabel, _hasData: true });
+    } else {
+      result.push({ date: dayLabel, followers: null, following: null, daily_change: null, cumulative_change: null, _hasData: false });
+    }
+  }
+  return result;
+}
+
+function setupFollowerMonthSelector(followers) {
+  const yearSelect = document.getElementById('follower-year-select');
+  const monthSelect = document.getElementById('follower-month-select');
+  if (!yearSelect || !monthSelect) return;
+
+  const months = getFollowerMonths(followers);
+  if (!months.length) return;
+
+  // 사용 가능한 년도 목록
+  const years = [...new Set(months.map(m => m.year))].sort();
+
+  // 현재 선택값이 없으면 가장 최근 월로 초기화
+  if (!followerSelectedYear || !followerSelectedMonth) {
+    const latest = months[months.length - 1];
+    followerSelectedYear = latest.year;
+    followerSelectedMonth = latest.month;
+  }
+
+  // 년도 드롭다운
+  yearSelect.innerHTML = years.map(y =>
+    `<option value="${y}" ${y === followerSelectedYear ? 'selected' : ''}>${y}년</option>`
+  ).join('');
+
+  // 선택된 년도의 월 목록
+  const updateMonthOptions = () => {
+    const availableMonths = months.filter(m => m.year === followerSelectedYear);
+    monthSelect.innerHTML = availableMonths.map(m =>
+      `<option value="${m.month}" ${m.month === followerSelectedMonth ? 'selected' : ''}>${m.month}월</option>`
+    ).join('');
+    // 선택된 월이 해당 년도에 없으면 마지막 월로
+    if (!availableMonths.some(m => m.month === followerSelectedMonth)) {
+      const last = availableMonths[availableMonths.length - 1];
+      if (last) {
+        followerSelectedMonth = last.month;
+        monthSelect.value = last.month;
+      }
+    }
+  };
+  updateMonthOptions();
+
+  // 이벤트 (기존 리스너 제거를 위해 복제 교체)
+  const newYearSelect = yearSelect.cloneNode(true);
+  yearSelect.parentNode.replaceChild(newYearSelect, yearSelect);
+  const newMonthSelect = monthSelect.cloneNode(true);
+  monthSelect.parentNode.replaceChild(newMonthSelect, monthSelect);
+
+  newYearSelect.addEventListener('change', () => {
+    followerSelectedYear = parseInt(newYearSelect.value);
+    // 월 옵션 갱신
+    const availableMonths = months.filter(m => m.year === followerSelectedYear);
+    newMonthSelect.innerHTML = availableMonths.map(m =>
+      `<option value="${m.month}">${m.month}월</option>`
+    ).join('');
+    const last = availableMonths[availableMonths.length - 1];
+    if (last) {
+      followerSelectedMonth = last.month;
+      newMonthSelect.value = last.month;
+    }
+    renderFollowerCharts();
+  });
+
+  newMonthSelect.addEventListener('change', () => {
+    followerSelectedMonth = parseInt(newMonthSelect.value);
+    renderFollowerCharts();
+  });
+}
+
+function renderFollowerCharts() {
+  const allFollowers = filterFollowersByMilestone(DATA.followers);
+  const filtered = filterFollowersByMonth(allFollowers, followerSelectedYear, followerSelectedMonth);
+  const monthDays = fillMonthDays(filtered, followerSelectedYear, followerSelectedMonth);
+
+  // 데이터가 있는 항목만 연결선용으로 추출
+  const withData = monthDays.filter(d => d._hasData);
 
   // 데이터 부족 안내
   const followerNotice = document.getElementById('follower-data-notice');
   if (followerNotice) {
-    followerNotice.style.display = followers.length < 14 ? 'block' : 'none';
-    followerNotice.textContent = `현재 ${followers.length}일치 데이터 수집 중 — 추세 분석은 14일 이상의 데이터에서 더 정확합니다`;
+    if (withData.length === 0) {
+      followerNotice.style.display = 'block';
+      followerNotice.textContent = `${followerSelectedYear}년 ${followerSelectedMonth}월 데이터가 없습니다`;
+    } else if (withData.length < 14) {
+      followerNotice.style.display = 'block';
+      followerNotice.textContent = `현재 ${withData.length}일치 데이터 수집 중 — 추세 분석은 14일 이상의 데이터에서 더 정확합니다`;
+    } else {
+      followerNotice.style.display = 'none';
+    }
   }
 
-  // Full follower chart
+  // X축: 일자 (1~31), Y축: 팔로워 수 (데이터 없으면 null)
+  const labels = monthDays.map(d => {
+    const m = d.date.match(/\d{2}\.\d{2}\.(\d{2})/);
+    return m ? m[1] + '일' : d.date;
+  });
+  const values = monthDays.map(d => d._hasData ? d.followers : null);
+
+  // Full follower chart (area)
   document.getElementById('chart-follower-full').innerHTML = '';
   trackChart(new ApexCharts(document.getElementById('chart-follower-full'), {
     ...chartTheme,
-    series: [{ name: '팔로워', data: followers.map(f => f.followers) }],
+    series: [{ name: '팔로워', data: values }],
     chart: { ...chartTheme.chart, type: 'area', height: 300 },
-    xaxis: { categories: followers.map(f => f.date.replace(/\(.\)$/, '')), labels: { style: { fontSize: '11px' } } },
-    yaxis: { labels: { formatter: v => fmt(v) } },
+    xaxis: { categories: labels, labels: { style: { fontSize: '10px' }, rotate: -45, rotateAlways: monthDays.length > 15 } },
+    yaxis: { labels: { formatter: v => v != null ? fmt(v) : '' } },
     stroke: { curve: 'smooth', width: 2 },
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05 } },
     colors: [chartColors.accent2],
     grid: chartTheme.grid,
-    tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) + '명' } },
+    tooltip: { ...chartTheme.tooltip, y: { formatter: v => v != null ? fmt(v) + '명' : '데이터 없음' } },
+    markers: { size: withData.length <= 15 ? 4 : 0 },
   })).render();
 
   // Daily change bar chart
+  const changes = [];
+  for (let i = 0; i < monthDays.length; i++) {
+    const cur = monthDays[i];
+    if (!cur._hasData) { changes.push({ label: labels[i], change: null }); continue; }
+    // 이전 데이터 포인트 찾기
+    let prev = null;
+    for (let j = i - 1; j >= 0; j--) {
+      if (monthDays[j]._hasData) { prev = monthDays[j]; break; }
+    }
+    // 이전 달 마지막 데이터도 확인
+    if (!prev) {
+      const allBefore = allFollowers.filter(f => {
+        const p = parseFollowerDate(f.date);
+        return p && (p.year < followerSelectedYear || (p.year === followerSelectedYear && p.month < followerSelectedMonth));
+      });
+      if (allBefore.length) prev = allBefore[allBefore.length - 1];
+    }
+    const change = prev ? (cur.followers || 0) - (prev.followers || 0) : 0;
+    changes.push({ label: labels[i], change });
+  }
+
   document.getElementById('chart-follower-change').innerHTML = '';
   trackChart(new ApexCharts(document.getElementById('chart-follower-change'), {
     ...chartTheme,
-    series: [{ name: '변화', data: changes.slice(1).map(c => c.change) }],
+    series: [{ name: '변화', data: changes.map(c => c.change) }],
     chart: { ...chartTheme.chart, type: 'bar', height: 250 },
-    xaxis: { categories: changes.slice(1).map(c => c.date.replace(/\(.\)$/, '')), labels: { style: { fontSize: '11px' } } },
+    xaxis: { categories: changes.map(c => c.label), labels: { style: { fontSize: '10px' }, rotate: -45, rotateAlways: changes.length > 15 } },
     colors: [chartColors.green],
     plotOptions: {
       bar: {
@@ -1665,8 +1806,83 @@ function renderFollowers() {
       },
     },
     grid: chartTheme.grid,
-    tooltip: { ...chartTheme.tooltip, y: { formatter: v => (v >= 0 ? '+' : '') + fmt(v) + '명' } },
+    tooltip: { ...chartTheme.tooltip, y: { formatter: v => v != null ? (v >= 0 ? '+' : '') + fmt(v) + '명' : '데이터 없음' } },
   })).render();
+}
+
+function renderFollowers() {
+  const allFollowers = filterFollowersByMilestone(DATA.followers);
+  if (!allFollowers.length) {
+    document.getElementById('kpi-total-growth').textContent = '-';
+    document.getElementById('kpi-avg-growth').textContent = '-';
+    document.getElementById('kpi-current-followers').textContent = '-';
+    document.getElementById('kpi-best-day').textContent = '-';
+    document.getElementById('chart-follower-full').innerHTML = '';
+    document.getElementById('chart-follower-change').innerHTML = '';
+    return;
+  }
+
+  const latest = allFollowers[allFollowers.length - 1];
+
+  // 총 성장: 25.12.26 기점 기준 (운영 시작일)
+  // posts 데이터에서 25.12.26 시점의 팔로워 수 추정
+  const milestoneDate = new Date(2025, 11, 26); // 2025-12-26
+  let baselineFollowers = null;
+
+  // 1) 팔로워 추적 데이터에서 기준일 이전 가장 가까운 값 찾기
+  for (let i = allFollowers.length - 1; i >= 0; i--) {
+    const p = parseFollowerDate(allFollowers[i].date);
+    if (p && p.dateObj <= milestoneDate) {
+      baselineFollowers = allFollowers[i].followers;
+      break;
+    }
+  }
+
+  // 2) 없으면 posts 데이터에서 25.12.26 근처 팔로워 수 찾기
+  if (baselineFollowers === null && DATA.posts && DATA.posts.length) {
+    const milestonePosts = DATA.posts.filter(p => {
+      const d = parseUploadDate(p.upload_date);
+      return d && d.getTime() <= milestoneDate.getTime() + 86400000; // +1일 여유
+    }).sort((a, b) => {
+      const da = parseUploadDate(a.upload_date);
+      const db = parseUploadDate(b.upload_date);
+      return db - da;
+    });
+    if (milestonePosts.length && milestonePosts[0].followers) {
+      baselineFollowers = milestonePosts[0].followers;
+    }
+  }
+
+  // 3) 그래도 없으면 팔로워 추적 첫 번째 데이터 사용
+  if (baselineFollowers === null) {
+    baselineFollowers = allFollowers[0].followers || 0;
+  }
+
+  const totalGrowth = (latest.followers || 0) - baselineFollowers;
+
+  // 일평균 성장: 25.12.26부터 현재까지 일수 기준
+  const latestParsed = parseFollowerDate(latest.date);
+  const daysSinceMilestone = latestParsed ? Math.max(1, Math.round((latestParsed.dateObj - milestoneDate) / 86400000)) : allFollowers.length - 1 || 1;
+  const avgGrowth = totalGrowth / daysSinceMilestone;
+
+  document.getElementById('kpi-total-growth').textContent = (totalGrowth >= 0 ? '+' : '') + fmt(totalGrowth);
+  document.getElementById('kpi-avg-growth').textContent = (avgGrowth >= 0 ? '+' : '') + avgGrowth.toFixed(1) + '/일';
+  document.getElementById('kpi-current-followers').textContent = fmt(latest.followers);
+
+  // 최고 성장일 계산
+  const changes = allFollowers.map((f, i) => {
+    if (i === 0) return { date: f.date, change: 0 };
+    const change = (f.followers || 0) - (allFollowers[i - 1].followers || 0);
+    return { date: f.date, change };
+  });
+  const best = changes.reduce((a, b) => (b.change > a.change ? b : a), changes[0]);
+  document.getElementById('kpi-best-day').textContent = best.date + ' (+' + fmt(best.change) + ')';
+
+  // 년/월 선택기 설정
+  setupFollowerMonthSelector(allFollowers);
+
+  // 차트 렌더링
+  renderFollowerCharts();
 }
 
 // ══════════════════════════════════════════════════
