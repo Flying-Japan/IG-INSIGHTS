@@ -133,7 +133,6 @@ function renderFollowerBanner() {
   if (!changes) { banner.style.display = 'none'; return; }
 
   banner.style.display = '';
-  const metaTime = DATA.meta && DATA.meta.updated_at_ko ? DATA.meta.updated_at_ko : '';
   const currentHtml = changes.current ? `<span class="fb-current">👥 팔로워 <strong>${fmt(changes.current)}</strong></span><span class="fb-divider">|</span>` : '';
   banner.innerHTML =
     currentHtml +
@@ -141,8 +140,7 @@ function renderFollowerBanner() {
     followChangeBadge('전일', changes.daily) +
     followChangeBadge('전주', changes.weekly) +
     followChangeBadge('전월', changes.monthly) +
-    followChangeBadge('전년', changes.yearly) +
-    `<span class="fb-date">기준: ${metaTime}</span>`;
+    followChangeBadge('전년', changes.yearly);
 }
 
 // ── Milestone Filter ──
@@ -216,7 +214,7 @@ async function init() {
     });
 
     DATA = { posts, followers, daily, meta, postsYesterday };
-    document.getElementById('update-time').textContent = '업데이트: ' + meta.updated_at_ko;
+    document.getElementById('update-time').textContent = '데이터 기준: ' + meta.updated_at_ko;
     document.getElementById('loading').classList.add('hidden');
 
     setupTabs();
@@ -515,19 +513,6 @@ function renderKpiStats(mode, periodPosts) {
     }
     if (f.id === 'followers') {
       if (valueEl) valueEl.textContent = fmt(f.val);
-      // Show follower changes (전일/전주/전월/전년) - 팔로우 유입 기준
-      const changeEl = document.getElementById('kpi-followers-change');
-      if (changeEl) {
-        const changes = calcFollowsChanges(posts, followers);
-        if (changes) {
-          changeEl.innerHTML =
-            followChangeBadge('전일', changes.daily) +
-            followChangeBadge('전주', changes.weekly) +
-            followChangeBadge('전월', changes.monthly) +
-            followChangeBadge('전년', changes.yearly);
-          changeEl.className = 'kpi-sub kpi-follower-changes';
-        }
-      }
       return;
     }
     if (valueEl) {
