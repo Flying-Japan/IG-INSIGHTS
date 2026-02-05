@@ -2,6 +2,7 @@
 
 // ── Utilities ──
 const fmt = n => n == null ? '-' : n.toLocaleString('ko-KR');
+const fmtSafe = n => n == null ? '<span class="no-data" title="데이터 없음">-</span>' : n.toLocaleString('ko-KR');
 const fmtCompact = n => {
   if (n == null) return '-';
   const abs = Math.abs(n);
@@ -39,7 +40,7 @@ function changeBadge(changeObj, isRate = false) {
   const { change } = changeObj;
   if (change === 0) return '';
   const sign = change >= 0 ? '+' : '';
-  const val = isRate ? (sign + change.toFixed(1) + '%p') : (sign + fmt(change));
+  const val = isRate ? (sign + change.toFixed(1) + '%p') : (sign + fmtCompact(change));
   const cls = change >= 0 ? 'positive' : 'negative';
   return ` <span class="kpi-change ${cls}">${val}</span>`;
 }
@@ -209,16 +210,16 @@ async function init() {
       });
     });
 
-    // 팔로우 전환율 계산 (follows / reach × 100)
+    // 팔로우 전환율 계산 (follows / reach × 100) — reach > 0 검증
     posts.forEach(p => {
-      p.follow_rate = (p.follows != null && p.reach) ? +(p.follows / p.reach * 100).toFixed(2) : null;
+      p.follow_rate = (p.follows != null && p.reach > 0) ? +(p.follows / p.reach * 100).toFixed(2) : null;
     });
-    // postsYesterday에도 동일 적용
     postsYesterday.forEach(p => {
-      p.follow_rate = (p.follows != null && p.reach) ? +(p.follows / p.reach * 100).toFixed(2) : null;
+      p.follow_rate = (p.follows != null && p.reach > 0) ? +(p.follows / p.reach * 100).toFixed(2) : null;
     });
 
     DATA = { posts, followers, daily, meta, postsYesterday };
+    DATA._hasYesterday = postsYesterday.length > 0;
     document.getElementById('update-time').textContent = meta.updated_at_ko;
     document.getElementById('loading').classList.add('hidden');
 
@@ -278,6 +279,11 @@ function renderAll() {
   renderCategory();
   renderContent();
   renderFollowerBanner();
+  // 전일 비교 데이터 안내
+  const noticeEl = document.getElementById('no-yesterday-notice');
+  if (noticeEl) {
+    noticeEl.style.display = DATA._hasYesterday ? 'none' : 'flex';
+  }
 }
 
 // ── KPI Stats (Unified with dropdown modes) ──
@@ -513,7 +519,14 @@ function renderKpiStats(mode, periodPosts) {
 
     if (f.id === 'top_post') {
       const top = posts.find(p => p.rank === 1) || (posts.length ? [...posts].sort((a,b) => (b.reach||0)-(a.reach||0))[0] : null);
-      if (valueEl) valueEl.textContent = top ? top.title : '-';
+      if (valueEl) {
+        if (top) {
+          valueEl.innerHTML = `<span title="종합순위 1위 (도달·참여·저장·공유 종합)">${top.title}</span>`;
+        } else {
+          valueEl.textContent = '-';
+        }
+      }
+      if (labelEl) labelEl.innerHTML = 'TOP 게시물 <span class="kpi-tooltip-wrap"><span class="kpi-tooltip-icon">ⓘ</span><span class="kpi-tooltip-text">도달·참여·저장·공유를 종합한 순위 1위 게시물</span></span>';
       return;
     }
     if (f.id === 'followers') {
@@ -883,21 +896,24 @@ function renderOverview() {
     updateKpiPeriodSelectors(mode);
   }
 
-  // Follower trend chart (last 30 days from daily report or follower data)
+  // Follower trend mini sparkline (개요 탭 — 최근 데이터만 간략히)
   document.getElementById('chart-follower-trend').innerHTML = '';
-  if (followers.length > 0) {
+  if (followers.length >= 2) {
     trackChart(new ApexCharts(document.getElementById('chart-follower-trend'), {
       ...chartTheme,
       series: [{ name: '팔로워', data: followers.map(f => f.followers) }],
-      chart: { ...chartTheme.chart, type: 'area', height: 250 },
-      xaxis: { categories: followers.map(f => f.date.replace(/\(.\)$/, '')), labels: { style: { fontSize: '11px' } } },
-      yaxis: { labels: { formatter: v => fmt(v) } },
+      chart: { ...chartTheme.chart, type: 'area', height: 180, sparkline: { enabled: false } },
+      xaxis: { categories: followers.map(f => f.date.replace(/\(.\)$/, '')), labels: { style: { fontSize: '10px' } } },
+      yaxis: { labels: { formatter: v => fmtCompact(v) }, min: Math.min(...followers.map(f=>f.followers)) - 5 },
       stroke: { curve: 'smooth', width: 2 },
       fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05 } },
       colors: [chartColors.accent],
       grid: chartTheme.grid,
+      dataLabels: { enabled: true, formatter: v => fmtCompact(v), style: { fontSize: '10px' } },
       tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) + '명' } },
     })).render();
+  } else {
+    document.getElementById('chart-follower-trend').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:180px;color:#666;font-size:13px">팔로워 데이터 수집 중 (2일 이상 필요)</div>';
   }
 
   // Content type distribution donut
@@ -933,7 +949,7 @@ function renderOverview() {
     }
     return null;
   })() : null;
-  document.getElementById('kpi-avg-engagement-per-post').innerHTML = fmt(avgEngPerPost) + gradeBadgeHtml(getGrade(marketerBenchmarks['kpi-avg-engagement-per-post'], avgEngPerPost)) + changeBadge(engPerPostChange);
+  document.getElementById('kpi-avg-engagement-per-post').innerHTML = `<span title="${fmt(avgEngPerPost)}">${fmtCompact(avgEngPerPost)}</span>` + gradeBadgeHtml(getGrade(marketerBenchmarks['kpi-avg-engagement-per-post'], avgEngPerPost)) + changeBadge(engPerPostChange);
 
   const mReaches = posts.map(p => p.reach).filter(v => v != null);
   const mLatestFollowers = followers.length ? followers[followers.length - 1].followers : null;
@@ -1079,6 +1095,13 @@ const colLabels = {
 };
 // title is always visible (non-toggleable)
 let visibleColumns = new Set(defaultOrder);
+// localStorage에서 칼럼 설정 복원
+try {
+  const savedVisible = JSON.parse(localStorage.getItem('col-visible'));
+  if (savedVisible && Array.isArray(savedVisible)) visibleColumns = new Set(savedVisible);
+  const savedOrder = JSON.parse(localStorage.getItem('col-order'));
+  if (savedOrder && Array.isArray(savedOrder)) userColumnOrder = savedOrder;
+} catch(e) {}
 
 // Build columns respecting user's drag order
 function buildColumns(sortField) {
@@ -1111,10 +1134,14 @@ function saveColumnOrder() {
   const cols = postTable.getColumns();
   userColumnOrder = cols.map(col => {
     const field = col.getField();
-    // field → key 매핑 (_rank → rank)
     if (field === '_rank') return 'rank';
     return field;
   }).filter(key => key && defaultOrder.includes(key));
+  // localStorage에 칼럼 순서 + 표시 설정 저장
+  try {
+    localStorage.setItem('col-order', JSON.stringify(userColumnOrder));
+    localStorage.setItem('col-visible', JSON.stringify([...visibleColumns]));
+  } catch(e) {}
 }
 
 // Column toggle UI
@@ -1134,6 +1161,7 @@ function renderColumnToggle() {
       saveColumnOrder();
       if (cb.checked) visibleColumns.add(key);
       else visibleColumns.delete(key);
+      try { localStorage.setItem('col-visible', JSON.stringify([...visibleColumns])); } catch(e) {}
       if (postTable) {
         postTable.setColumns(buildColumns(currentSortField));
       }
@@ -1436,7 +1464,11 @@ function renderPostTable() {
     data: initialData,
     layout: 'fitColumns',
     height: '600px',
-    pagination: false,
+    pagination: true,
+    paginationSize: 50,
+    paginationSizeSelector: [25, 50, 100, true],
+    locale: true,
+    langs: { "default": { "pagination": { "page_size": "표시 개수", "first": "≪", "prev": "‹", "next": "›", "last": "≫" } } },
     movableColumns: true,
     columnDefaults: { headerSortClickElement: 'icon' },
     columns: buildColumns('rank'),
@@ -1483,9 +1515,16 @@ function applyFilters() {
   const filters = [];
   if (cat) filters.push({ field: 'category', type: '=', value: cat });
   if (type) filters.push({ field: 'media_type', type: '=', value: type });
-  if (search) filters.push({ field: 'title', type: 'like', value: search });
-
   postTable.setFilter(filters);
+  // 제목 + 카테고리 + 유형 통합 검색 (커스텀 필터)
+  if (search) {
+    postTable.addFilter(function(data) {
+      const s = search;
+      return (data.title || '').toLowerCase().includes(s)
+        || (data.category || '').toLowerCase().includes(s)
+        || typeLabel(data.media_type || '').toLowerCase().includes(s);
+    });
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -1521,6 +1560,13 @@ function renderFollowers() {
 
   const best = changes.reduce((a, b) => (b.change > a.change ? b : a), changes[0]);
   document.getElementById('kpi-best-day').textContent = best.date + ' (+' + fmt(best.change) + ')';
+
+  // 데이터 부족 안내
+  const followerNotice = document.getElementById('follower-data-notice');
+  if (followerNotice) {
+    followerNotice.style.display = followers.length < 14 ? 'block' : 'none';
+    followerNotice.textContent = `현재 ${followers.length}일치 데이터 수집 중 — 추세 분석은 14일 이상의 데이터에서 더 정확합니다`;
+  }
 
   // Full follower chart
   document.getElementById('chart-follower-full').innerHTML = '';

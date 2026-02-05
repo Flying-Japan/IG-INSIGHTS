@@ -1092,22 +1092,22 @@ body {
   align-items: center;
   gap: 12px;
   padding: 10px 32px;
-  background: var(--card);
+  background: var(--bg2);
   border-bottom: 1px solid var(--border);
   font-size: 13px;
   overflow-x: auto;
   white-space: nowrap;
 }
 .fb-current {
-  color: var(--text1);
+  color: var(--text);
   font-size: 14px;
 }
 .fb-current strong {
   font-size: 16px;
-  color: var(--accent);
+  color: var(--accent3);
 }
 .fb-divider {
-  color: var(--text3);
+  color: var(--text2);
   opacity: 0.4;
 }
 .fc-item {
@@ -1181,16 +1181,60 @@ body {
   font-size: 9px;
 }
 
+/* ── 데이터 없음 표시 ── */
+.no-data { color: var(--text2); opacity: 0.5; }
+
+/* ── 전일 비교 없음 안내 ── */
+.no-yesterday-notice {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 16px; background: var(--bg3); font-size: 11px; color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
+.no-yesterday-notice::before { content: 'ⓘ'; }
+
+/* ── 페이지네이션 다크 테마 ── */
+.tabulator .tabulator-footer { background: var(--bg2); border-top: 1px solid var(--border); color: var(--text); }
+.tabulator .tabulator-footer .tabulator-page { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 4px 10px; border-radius: 4px; }
+.tabulator .tabulator-footer .tabulator-page.active { background: var(--accent3); color: #fff; border-color: var(--accent3); }
+.tabulator .tabulator-footer .tabulator-page:hover:not(.active) { background: var(--border); color: var(--text); }
+.tabulator .tabulator-footer .tabulator-page-size { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 4px 8px; }
+.tabulator .tabulator-footer .tabulator-pages { gap: 2px; }
+
+/* ── 기간 셀렉터 통일 ── */
+.period-selector select,
+.dow-mode-group select,
+#kpi-period-selectors select,
+#dow-selectors select,
+#summary-period-selectors select {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;
+  outline: none; transition: border-color 0.2s;
+}
+.period-selector select:hover,
+.dow-mode-group select:hover,
+#kpi-period-selectors select:hover,
+#dow-selectors select:hover,
+#summary-period-selectors select:hover { border-color: var(--accent3); }
+
+/* ── 태블릿 (768px ~ 1024px) ── */
+@media (max-width: 1024px) {
+  .kpi-grid-7 { grid-template-columns: repeat(4, 1fr); }
+  .chart-grid { grid-template-columns: 1fr; }
+}
+
+/* ── 모바일 (768px 이하) ── */
 @media (max-width: 768px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .kpi-grid-3 { grid-template-columns: repeat(2, 1fr); }
   .kpi-grid-4 { grid-template-columns: repeat(2, 1fr); }
   .kpi-grid-5 { grid-template-columns: repeat(2, 1fr); }
-  .kpi-grid-7 { grid-template-columns: repeat(3, 1fr); }
+  .kpi-grid-7 { grid-template-columns: repeat(2, 1fr); }
   .chart-grid { grid-template-columns: 1fr; }
-  .header { padding: 12px 16px; }
+  .header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+  .header h1 { font-size: 16px; }
   .container { padding: 12px 16px; }
-  .tab-btn { padding: 10px 14px; font-size: 13px; }
+  .tab-btn { padding: 8px 12px; font-size: 12px; }
+  .tab-nav { overflow-x: auto; white-space: nowrap; }
   .contrib-row { flex-wrap: wrap; }
   .contrib-row-top { gap: 12px; }
   .milestone-bar { flex-wrap: wrap; padding: 8px 16px; gap: 8px; }
@@ -1199,4 +1243,17 @@ body {
   .follower-banner { padding: 8px 16px; gap: 8px; font-size: 11px; }
   .fb-current { font-size: 12px; }
   .fb-current strong { font-size: 13px; }
+  .filter-bar { flex-wrap: wrap; gap: 8px; }
+  .filter-bar select, .filter-bar input { font-size: 12px; min-width: 0; flex: 1; }
+  .kpi-card { padding: 12px; }
+  .kpi-value { font-size: 20px; }
+}
+
+/* ── 소형 모바일 (480px 이하) ── */
+@media (max-width: 480px) {
+  .kpi-grid-7 { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: 1fr; }
+  .header-right { flex-wrap: wrap; justify-content: flex-end; }
+  .update-btn { font-size: 11px; padding: 4px 8px; }
+  .update-time { font-size: 11px; }
 }
