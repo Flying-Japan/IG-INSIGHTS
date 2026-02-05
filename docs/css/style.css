@@ -94,6 +94,60 @@ body {
 .cell-change.positive { color: var(--green); }
 .cell-change.negative { color: var(--red); }
 
+/* ── Milestone Filter Bar ── */
+.milestone-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 24px;
+  background: linear-gradient(135deg, rgba(131,58,180,0.08), rgba(247,119,55,0.08));
+  border-bottom: 1px solid var(--border);
+}
+.milestone-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+.milestone-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.milestone-btn {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  border: none;
+  background: var(--bg3);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.milestone-btn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+.milestone-btn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  color: #fff;
+  font-weight: 600;
+}
+.milestone-btn:hover:not(.active) {
+  background: var(--border);
+  color: var(--text);
+}
+.milestone-date {
+  font-size: 11px;
+  color: var(--text2);
+  margin-left: auto;
+  opacity: 0.7;
+}
+
 /* ── Tab Nav ── */
 .tab-nav {
   display: flex;
@@ -569,4 +623,7 @@ body {
   .header { padding: 12px 16px; }
   .container { padding: 12px 16px; }
   .tab-btn { padding: 10px 14px; font-size: 13px; }
+  .milestone-bar { flex-wrap: wrap; padding: 8px 16px; gap: 8px; }
+  .milestone-btn { padding: 5px 10px; font-size: 11px; }
+  .milestone-date { font-size: 10px; }
 }

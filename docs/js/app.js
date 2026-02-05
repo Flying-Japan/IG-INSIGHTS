@@ -36,6 +36,46 @@ function changeBadge(changeObj, isRate = false) {
   return ` <span class="kpi-change ${cls}">${val}</span>`;
 }
 
+// ── Milestone Filter ──
+const MILESTONE_DATE = new Date(2025, 11, 26); // 2025-12-26
+let milestoneFilter = 'all'; // 'all' | 'before' | 'after'
+
+// upload_date "26.02.03(화)" → Date 객체 (여기서 미리 정의, 아래에서도 사용)
+function parseUploadDate(str) {
+  const m = str.match(/(\d{2})\.(\d{2})\.(\d{2})/);
+  return m ? new Date(2000 + parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])) : null;
+}
+
+function filterByMilestone(posts) {
+  if (milestoneFilter === 'all') return posts;
+  return posts.filter(p => {
+    const d = parseUploadDate(p.upload_date);
+    if (!d) return false;
+    return milestoneFilter === 'before' ? d < MILESTONE_DATE : d >= MILESTONE_DATE;
+  });
+}
+
+function filterDailyByMilestone(daily) {
+  if (milestoneFilter === 'all') return daily;
+  return daily.filter(d => {
+    if (!d.date) return milestoneFilter === 'all';
+    // daily_report date format: "2026-01-20" or similar
+    const dt = new Date(d.date);
+    if (isNaN(dt)) return milestoneFilter === 'all';
+    return milestoneFilter === 'before' ? dt < MILESTONE_DATE : dt >= MILESTONE_DATE;
+  });
+}
+
+function filterFollowersByMilestone(followers) {
+  if (milestoneFilter === 'all') return followers;
+  return followers.filter(f => {
+    // follower date format: "26.01.20(월)" same as upload_date
+    const d = parseUploadDate(f.date);
+    if (!d) return milestoneFilter === 'all';
+    return milestoneFilter === 'before' ? d < MILESTONE_DATE : d >= MILESTONE_DATE;
+  });
+}
+
 // ── Data Store ──
 let DATA = { posts: [], followers: [], daily: [], meta: {}, postsYesterday: [] };
 
@@ -62,11 +102,8 @@ async function init() {
     document.getElementById('loading').classList.add('hidden');
 
     setupTabs();
-    renderOverview();
-    renderPostTable();
-    renderFollowers();
-    renderCategory();
-    renderContent();
+    setupMilestoneFilter();
+    renderAll();
   } catch (e) {
     document.getElementById('loading').innerHTML = '<p>데이터 로딩 실패: ' + e.message + '</p>';
   }
@@ -86,11 +123,48 @@ function setupTabs() {
   });
 }
 
+// ── Milestone Filter Setup ──
+function setupMilestoneFilter() {
+  const toggle = document.getElementById('milestone-toggle');
+  if (!toggle) return;
+  toggle.addEventListener('click', e => {
+    const btn = e.target.closest('.milestone-btn');
+    if (!btn || !btn.dataset.filter) return;
+    milestoneFilter = btn.dataset.filter;
+    toggle.querySelectorAll('.milestone-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Destroy existing charts & tables, then re-render everything
+    destroyAllCharts();
+    renderAll();
+  });
+}
+
+// ── Destroy all charts before re-rendering ──
+let chartInstances = [];
+function trackChart(chart) { chartInstances.push(chart); return chart; }
+function destroyAllCharts() {
+  chartInstances.forEach(c => { try { c.destroy(); } catch(e) {} });
+  chartInstances = [];
+  if (dowChartInstance) { try { dowChartInstance.destroy(); } catch(e) {} dowChartInstance = null; }
+  if (postTable) { try { postTable.destroy(); } catch(e) {} postTable = null; }
+}
+
+// ── Render All ──
+function renderAll() {
+  renderOverview();
+  renderPostTable();
+  renderFollowers();
+  renderCategory();
+  renderContent();
+}
+
 // ══════════════════════════════════════════════════
 // TAB 1: Overview
 // ══════════════════════════════════════════════════
 function renderOverview() {
-  const { posts, followers, daily } = DATA;
+  const posts = filterByMilestone(DATA.posts);
+  const followers = filterFollowersByMilestone(DATA.followers);
+  const daily = filterDailyByMilestone(DATA.daily);
 
   // KPIs
   document.getElementById('kpi-posts').textContent = fmt(posts.length);
@@ -135,8 +209,9 @@ function renderOverview() {
   document.getElementById('kpi-total-engagement').innerHTML = fmt(totalEngagement) + changeBadge(getDailyChange(daily, 'total_engagement'));
 
   // Follower trend chart (last 30 days from daily report or follower data)
+  document.getElementById('chart-follower-trend').innerHTML = '';
   if (followers.length > 0) {
-    new ApexCharts(document.getElementById('chart-follower-trend'), {
+    trackChart(new ApexCharts(document.getElementById('chart-follower-trend'), {
       ...chartTheme,
       series: [{ name: '팔로워', data: followers.map(f => f.followers) }],
       chart: { ...chartTheme.chart, type: 'area', height: 250 },
@@ -147,13 +222,14 @@ function renderOverview() {
       colors: [chartColors.accent],
       grid: chartTheme.grid,
       tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) + '명' } },
-    }).render();
+    })).render();
   }
 
   // Content type distribution donut
   const typeCounts = {};
   posts.forEach(p => { typeCounts[p.media_type] = (typeCounts[p.media_type] || 0) + 1; });
-  new ApexCharts(document.getElementById('chart-type-dist'), {
+  document.getElementById('chart-type-dist').innerHTML = '';
+  trackChart(new ApexCharts(document.getElementById('chart-type-dist'), {
     ...chartTheme,
     series: Object.values(typeCounts),
     chart: { ...chartTheme.chart, type: 'donut', height: 250 },
@@ -161,7 +237,7 @@ function renderOverview() {
     colors: [chartColors.accent, chartColors.blue, chartColors.green, chartColors.yellow],
     legend: { position: 'bottom', labels: { colors: '#9499b3' } },
     plotOptions: { pie: { donut: { size: '55%' } } },
-  }).render();
+  })).render();
 
   // Day-of-week reach & engagement (replaces daily chart)
   renderDowChart('all');
@@ -201,7 +277,8 @@ function renderOverview() {
   const tcLabels = Object.keys(typeCompare).map(typeLabel);
   const tcKeys = Object.keys(typeCompare);
 
-  new ApexCharts(document.getElementById('chart-type-compare'), {
+  document.getElementById('chart-type-compare').innerHTML = '';
+  trackChart(new ApexCharts(document.getElementById('chart-type-compare'), {
     ...chartTheme,
     series: [
       { name: '평균 참여율', data: tcKeys.map(k => +avg(typeCompare[k].eng).toFixed(1)) },
@@ -215,7 +292,7 @@ function renderOverview() {
     plotOptions: { bar: { borderRadius: 3, columnWidth: '50%' } },
     grid: chartTheme.grid,
     tooltip: { ...chartTheme.tooltip, y: { formatter: v => v + '%' } },
-  }).render();
+  })).render();
 }
 
 // ══════════════════════════════════════════════════
@@ -333,16 +410,10 @@ function recalcRankedData(posts, sortField, sortDir) {
 let dowChartInstance = null;
 let dowCurrentMode = 'all';
 
-// upload_date "26.02.03(화)" → Date 객체
-function parseUploadDate(str) {
-  const m = str.match(/(\d{2})\.(\d{2})\.(\d{2})/);
-  return m ? new Date(2000 + parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])) : null;
-}
-
 // 게시물에서 사용 가능한 연도/월 목록 추출
 function getAvailableYearMonths() {
   const ym = new Set();
-  DATA.posts.forEach(p => {
+  filterByMilestone(DATA.posts).forEach(p => {
     const d = parseUploadDate(p.upload_date);
     if (d) ym.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
   });
@@ -451,7 +522,7 @@ function updateDowSelectors(mode, keepValues) {
 
 // 실제 차트 데이터 렌더링
 function renderDowChartData() {
-  const { posts } = DATA;
+  const posts = filterByMilestone(DATA.posts);
   const mode = dowCurrentMode;
   if (dowChartInstance) dowChartInstance.destroy();
 
@@ -578,12 +649,13 @@ document.getElementById('dow-toggle')?.addEventListener('click', e => {
 });
 
 function renderPostTable() {
-  const { posts } = DATA;
+  const posts = filterByMilestone(DATA.posts);
   buildYesterdayMap();
 
   // Populate category filter
   const categories = [...new Set(posts.map(p => p.category).filter(Boolean))].sort();
   const catSelect = document.getElementById('filter-category');
+  catSelect.innerHTML = '<option value="">전체 카테고리</option>';
   categories.forEach(c => {
     const opt = document.createElement('option');
     opt.value = c; opt.textContent = c;
@@ -593,6 +665,7 @@ function renderPostTable() {
   // Initial data with original rank
   const initialData = recalcRankedData(posts, 'rank', 'asc');
 
+  document.getElementById('post-table').innerHTML = '';
   postTable = new Tabulator('#post-table', {
     data: initialData,
     layout: 'fitColumns',
@@ -603,25 +676,25 @@ function renderPostTable() {
 
   // Row click → diagnosis modal
   postTable.on('rowClick', (e, row) => {
-    if (e.target.tagName === 'A') return; // don't intercept link clicks
+    if (e.target.tagName === 'A') return;
     showPostModal(row.getData());
   });
 
-  // Sort dropdown handler
-  document.getElementById('sort-select').addEventListener('change', function() {
-    const [field, dir] = this.value.split('|');
-    currentSortField = field;
-    const rankedData = recalcRankedData(DATA.posts, field, dir);
-    postTable.setColumns(buildColumns(field));
-    postTable.replaceData(rankedData);
-    // Re-apply active filters
-    applyFilters();
-  });
-
-  // Filters
-  document.getElementById('filter-category').addEventListener('change', applyFilters);
-  document.getElementById('filter-type').addEventListener('change', applyFilters);
-  document.getElementById('filter-search').addEventListener('input', applyFilters);
+  // Bind event listeners only once
+  if (!renderPostTable._bound) {
+    renderPostTable._bound = true;
+    document.getElementById('sort-select').addEventListener('change', function() {
+      const [field, dir] = this.value.split('|');
+      currentSortField = field;
+      const rankedData = recalcRankedData(filterByMilestone(DATA.posts), field, dir);
+      postTable.setColumns(buildColumns(field));
+      postTable.replaceData(rankedData);
+      applyFilters();
+    });
+    document.getElementById('filter-category').addEventListener('change', applyFilters);
+    document.getElementById('filter-type').addEventListener('change', applyFilters);
+    document.getElementById('filter-search').addEventListener('input', applyFilters);
+  }
 }
 
 function applyFilters() {
@@ -641,8 +714,16 @@ function applyFilters() {
 // TAB 3: Followers
 // ══════════════════════════════════════════════════
 function renderFollowers() {
-  const { followers } = DATA;
-  if (!followers.length) return;
+  const followers = filterFollowersByMilestone(DATA.followers);
+  if (!followers.length) {
+    document.getElementById('kpi-total-growth').textContent = '-';
+    document.getElementById('kpi-avg-growth').textContent = '-';
+    document.getElementById('kpi-current-followers').textContent = '-';
+    document.getElementById('kpi-best-day').textContent = '-';
+    document.getElementById('chart-follower-full').innerHTML = '';
+    document.getElementById('chart-follower-change').innerHTML = '';
+    return;
+  }
 
   const latest = followers[followers.length - 1];
   const first = followers[0];
@@ -664,7 +745,8 @@ function renderFollowers() {
   document.getElementById('kpi-best-day').textContent = best.date + ' (+' + fmt(best.change) + ')';
 
   // Full follower chart
-  new ApexCharts(document.getElementById('chart-follower-full'), {
+  document.getElementById('chart-follower-full').innerHTML = '';
+  trackChart(new ApexCharts(document.getElementById('chart-follower-full'), {
     ...chartTheme,
     series: [{ name: '팔로워', data: followers.map(f => f.followers) }],
     chart: { ...chartTheme.chart, type: 'area', height: 300 },
@@ -675,10 +757,11 @@ function renderFollowers() {
     colors: [chartColors.accent2],
     grid: chartTheme.grid,
     tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) + '명' } },
-  }).render();
+  })).render();
 
   // Daily change bar chart
-  new ApexCharts(document.getElementById('chart-follower-change'), {
+  document.getElementById('chart-follower-change').innerHTML = '';
+  trackChart(new ApexCharts(document.getElementById('chart-follower-change'), {
     ...chartTheme,
     series: [{ name: '변화', data: changes.slice(1).map(c => c.change) }],
     chart: { ...chartTheme.chart, type: 'bar', height: 250 },
@@ -694,14 +777,14 @@ function renderFollowers() {
     },
     grid: chartTheme.grid,
     tooltip: { ...chartTheme.tooltip, y: { formatter: v => (v >= 0 ? '+' : '') + fmt(v) + '명' } },
-  }).render();
+  })).render();
 }
 
 // ══════════════════════════════════════════════════
 // TAB 4: Category Analysis
 // ══════════════════════════════════════════════════
 function renderCategory() {
-  const { posts } = DATA;
+  const posts = filterByMilestone(DATA.posts);
   const catMap = {};
   posts.forEach(p => {
     const c = p.category || '기타';
@@ -731,7 +814,8 @@ function renderCategory() {
     `</div>`;
 
   // Engagement bar chart
-  new ApexCharts(document.getElementById('chart-cat-engagement'), {
+  document.getElementById('chart-cat-engagement').innerHTML = '';
+  trackChart(new ApexCharts(document.getElementById('chart-cat-engagement'), {
     ...chartTheme,
     series: [{ name: '평균 참여율', data: catStats.map(c => +c.avgEngagement.toFixed(1)) }],
     chart: { ...chartTheme.chart, type: 'bar', height: 300 },
@@ -741,10 +825,11 @@ function renderCategory() {
     plotOptions: { bar: { borderRadius: 4, horizontal: true } },
     grid: chartTheme.grid,
     tooltip: { ...chartTheme.tooltip, y: { formatter: v => v + '%' } },
-  }).render();
+  })).render();
 
   // Reach bar chart
-  new ApexCharts(document.getElementById('chart-cat-reach'), {
+  document.getElementById('chart-cat-reach').innerHTML = '';
+  trackChart(new ApexCharts(document.getElementById('chart-cat-reach'), {
     ...chartTheme,
     series: [{ name: '평균 도달', data: catStats.map(c => Math.round(c.avgReach)) }],
     chart: { ...chartTheme.chart, type: 'bar', height: 300 },
@@ -754,10 +839,11 @@ function renderCategory() {
     plotOptions: { bar: { borderRadius: 4, horizontal: true } },
     grid: chartTheme.grid,
     tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) } },
-  }).render();
+  })).render();
 
   // Save/Share grouped bar
-  new ApexCharts(document.getElementById('chart-cat-save-share'), {
+  document.getElementById('chart-cat-save-share').innerHTML = '';
+  trackChart(new ApexCharts(document.getElementById('chart-cat-save-share'), {
     ...chartTheme,
     series: [
       { name: '평균 저장', data: catStats.map(c => Math.round(c.avgSaves)) },
@@ -769,9 +855,10 @@ function renderCategory() {
     plotOptions: { bar: { borderRadius: 3, columnWidth: '60%' } },
     grid: chartTheme.grid,
     tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) } },
-  }).render();
+  })).render();
 
   // Category summary table
+  document.getElementById('cat-summary-table').innerHTML = '';
   new Tabulator('#cat-summary-table', {
     data: catStats,
     layout: 'fitColumns',
@@ -796,7 +883,7 @@ function renderCategory() {
 // TAB 5: Content Analysis
 // ══════════════════════════════════════════════════
 function renderContent() {
-  const { posts } = DATA;
+  const posts = filterByMilestone(DATA.posts);
   const typeMap = {};
   posts.forEach(p => {
     const t = p.media_type || 'OTHER';
@@ -886,7 +973,8 @@ function renderContent() {
   document.getElementById('metric-champions').innerHTML = champHtml;
 
   // Content type comparison grouped bar
-  new ApexCharts(document.getElementById('chart-content-compare'), {
+  document.getElementById('chart-content-compare').innerHTML = '';
+  trackChart(new ApexCharts(document.getElementById('chart-content-compare'), {
     ...chartTheme,
     series: [
       { name: '평균 도달', data: typeStats.map(t => Math.round(t.avgReach)) },
@@ -899,7 +987,7 @@ function renderContent() {
     plotOptions: { bar: { borderRadius: 3, columnWidth: '55%' } },
     grid: chartTheme.grid,
     tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) } },
-  }).render();
+  })).render();
 
   // Scatter: Reach vs Engagement Rate
   const scatterSeries = Object.entries(typeMap).map(([type, items]) => ({
@@ -910,7 +998,8 @@ function renderContent() {
       title: p.title,
     })),
   }));
-  new ApexCharts(document.getElementById('chart-scatter'), {
+  document.getElementById('chart-scatter').innerHTML = '';
+  trackChart(new ApexCharts(document.getElementById('chart-scatter'), {
     ...chartTheme,
     series: scatterSeries,
     chart: { ...chartTheme.chart, type: 'scatter', height: 300 },
@@ -925,10 +1014,11 @@ function renderContent() {
         return `<div style="padding:8px;font-size:12px"><strong>${p.title || ''}</strong><br>도달: ${fmt(p.x)}<br>참여율: ${p.y.toFixed(1)}%</div>`;
       },
     },
-  }).render();
+  })).render();
 
   // Top 10 table
   const top10 = [...posts].sort((a, b) => (a.rank || 999) - (b.rank || 999)).slice(0, 10);
+  document.getElementById('top10-table').innerHTML = '';
   new Tabulator('#top10-table', {
     data: top10,
     layout: 'fitColumns',
@@ -960,7 +1050,7 @@ function getPercentile(value, arr) {
 }
 
 function diagnosePost(post) {
-  const { posts } = DATA;
+  const posts = filterByMilestone(DATA.posts);
   const allReach = posts.map(p => p.reach).filter(v => v != null);
   const allEng = posts.map(p => p.engagement_rate).filter(v => v != null);
   const allSaves = posts.map(p => p.saves).filter(v => v != null);
