@@ -195,36 +195,38 @@ const statTooltips = {
 // ── Benchmark grading (Instagram industry averages) ──
 // Each entry: { grades: [{min, label, cls}], unit, scaleNote }
 // grades ordered from highest threshold downward
+// 2025 Instagram benchmarks — 여행/관광 업종 기준
+// Sources: Rival IQ 2025 Benchmark Report, Social Insider, Dash Social Travel Industry Report
 const statBenchmarks = {
   engagement_rate: {
     grades: [
-      { min: 6, label: '우수', cls: 'excellent' },
-      { min: 3, label: '양호', cls: 'good' },
-      { min: 1, label: '보통', cls: 'normal' },
-      { min: 0, label: '미흡', cls: 'low' },
-    ],
-    unit: '%',
-    scaleNote: '인스타그램 평균 참여율은 약 1~3%. 6% 이상이면 매우 높은 수준',
-  },
-  save_rate: {
-    grades: [
       { min: 3, label: '우수', cls: 'excellent' },
-      { min: 1.5, label: '양호', cls: 'good' },
+      { min: 1.2, label: '양호', cls: 'good' },
       { min: 0.5, label: '보통', cls: 'normal' },
       { min: 0, label: '미흡', cls: 'low' },
     ],
     unit: '%',
-    scaleNote: '저장율 1.5% 이상이면 양호. 3% 이상은 콘텐츠 가치가 매우 높음',
+    scaleNote: '2025 IG 전체 평균 0.5%, 여행 업종 평균 약 1.2%. 3% 이상이면 매우 우수한 수준',
   },
-  share_rate: {
+  save_rate: {
     grades: [
-      { min: 2, label: '우수', cls: 'excellent' },
+      { min: 3, label: '우수', cls: 'excellent' },
       { min: 1, label: '양호', cls: 'good' },
       { min: 0.3, label: '보통', cls: 'normal' },
       { min: 0, label: '미흡', cls: 'low' },
     ],
     unit: '%',
-    scaleNote: '공유율 1% 이상이면 양호. 2% 이상은 바이럴 잠재력이 높음',
+    scaleNote: '캐러셀 평균 저장율 약 3.4%. 여행 콘텐츠는 저장율이 높은 편 (정보성 콘텐츠 +24%)',
+  },
+  share_rate: {
+    grades: [
+      { min: 1.5, label: '우수', cls: 'excellent' },
+      { min: 0.5, label: '양호', cls: 'good' },
+      { min: 0.2, label: '보통', cls: 'normal' },
+      { min: 0, label: '미흡', cls: 'low' },
+    ],
+    unit: '%',
+    scaleNote: '2025 IG 알고리즘이 DM 공유(Sends)를 최우선 순위로 반영. 공유율이 높을수록 도달 확대',
   },
 };
 // For marketer KPIs (not in statFields but rendered separately)
@@ -233,23 +235,23 @@ const marketerBenchmarks = {
   'kpi-avg-share-rate': statBenchmarks.share_rate,
   'kpi-avg-engagement-per-post': {
     grades: [
-      { min: 500, label: '우수', cls: 'excellent' },
-      { min: 200, label: '양호', cls: 'good' },
-      { min: 50, label: '보통', cls: 'normal' },
-      { min: 0, label: '미흡', cls: 'low' },
-    ],
-    unit: '',
-    scaleNote: '게시물당 참여 200 이상이면 양호. 팔로워 규모에 따라 달라질 수 있음',
-  },
-  'kpi-reach-rate': {
-    grades: [
-      { min: 200, label: '우수', cls: 'excellent' },
-      { min: 80, label: '양호', cls: 'good' },
+      { min: 300, label: '우수', cls: 'excellent' },
+      { min: 100, label: '양호', cls: 'good' },
       { min: 30, label: '보통', cls: 'normal' },
       { min: 0, label: '미흡', cls: 'low' },
     ],
+    unit: '',
+    scaleNote: '팔로워 1만 이하 계정 기준. 팔로워 규모가 클수록 절대 수치는 높지만 비율은 낮아지는 경향',
+  },
+  'kpi-reach-rate': {
+    grades: [
+      { min: 150, label: '우수', cls: 'excellent' },
+      { min: 50, label: '양호', cls: 'good' },
+      { min: 20, label: '보통', cls: 'normal' },
+      { min: 0, label: '미흡', cls: 'low' },
+    ],
     unit: '%',
-    scaleNote: '팔로워 대비 도달 80% 이상이면 양호. 100% 초과 시 비팔로워 유입이 활발',
+    scaleNote: '2025 IG 평균 도달율 약 20~30%. 50% 이상이면 양호, 100% 초과 시 비팔로워 유입 활발',
   },
 };
 
@@ -270,7 +272,7 @@ function benchmarkScaleHtml(benchmark, currentValue) {
   if (!benchmark) return '';
   const grades = benchmark.grades;
   let html = '<div class="kpi-benchmark-scale">';
-  html += '<div class="benchmark-title">업계 기준</div>';
+  html += '<div class="benchmark-title">여행 업종 기준 (2025)</div>';
   html += '<div class="benchmark-bar">';
   const colors = { excellent: '#00c853', good: '#448aff', normal: '#ffd600', low: '#ff5252' };
   const widths = [25, 25, 25, 25]; // equal width segments
