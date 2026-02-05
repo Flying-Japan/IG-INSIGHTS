@@ -926,6 +926,30 @@ body {
   color: var(--green);
 }
 
+/* ── Compact Number Toggle ── */
+.compact-toggle-btn {
+  background: var(--bg3);
+  border: 1px solid var(--accent3);
+  color: var(--accent3);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+.compact-toggle-btn:hover {
+  background: var(--accent3);
+  color: #fff;
+}
+.compact-toggle-btn.active {
+  background: var(--accent3);
+  color: #fff;
+}
+
 /* ── Column Toggle ── */
 .col-toggle-btn {
   background: var(--bg3);

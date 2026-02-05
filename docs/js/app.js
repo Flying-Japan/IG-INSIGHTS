@@ -11,6 +11,9 @@ const fmtCompact = n => {
   if (abs >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
   return n.toLocaleString('ko-KR');
 };
+// 테이블 숫자 표시 모드: true=K/M 축약, false=전체 숫자
+let compactMode = (() => { try { const v = localStorage.getItem('compact-mode'); return v === 'true'; } catch(e) { return false; } })();
+const fmtCell = n => compactMode ? fmtCompact(n) : fmt(n);
 const fmtPct = n => n == null ? '-' : n.toFixed(1) + '%';
 const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 const sum = arr => arr.reduce((a, b) => a + (b || 0), 0);
@@ -40,7 +43,7 @@ function changeBadge(changeObj, isRate = false) {
   const { change } = changeObj;
   if (change === 0) return '';
   const sign = change >= 0 ? '+' : '';
-  const val = isRate ? (sign + change.toFixed(1) + '%p') : (sign + fmtCompact(change));
+  const val = isRate ? (sign + change.toFixed(1) + '%p') : (sign + fmtCell(change));
   const cls = change >= 0 ? 'positive' : 'negative';
   return ` <span class="kpi-change ${cls}">${val}</span>`;
 }
@@ -534,7 +537,7 @@ function renderKpiStats(mode, periodPosts) {
       return;
     }
     if (valueEl) {
-      const formatted = f.isPct ? fmtPct(f.val) : fmtCompact(f.val);
+      const formatted = f.isPct ? fmtPct(f.val) : fmtCell(f.val);
       const fullNum = f.isPct ? fmtPct(f.val) : fmt(f.val);
       const showChange = isTotal && f.daily;
       const bm = statBenchmarks[f.id];
@@ -904,12 +907,12 @@ function renderOverview() {
       series: [{ name: '팔로워', data: followers.map(f => f.followers) }],
       chart: { ...chartTheme.chart, type: 'area', height: 180, sparkline: { enabled: false } },
       xaxis: { categories: followers.map(f => f.date.replace(/\(.\)$/, '')), labels: { style: { fontSize: '10px' } } },
-      yaxis: { labels: { formatter: v => fmtCompact(v) }, min: Math.min(...followers.map(f=>f.followers)) - 5 },
+      yaxis: { labels: { formatter: v => fmt(v) }, min: Math.min(...followers.map(f=>f.followers)) - 5 },
       stroke: { curve: 'smooth', width: 2 },
       fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05 } },
       colors: [chartColors.accent],
       grid: chartTheme.grid,
-      dataLabels: { enabled: true, formatter: v => fmtCompact(v), style: { fontSize: '10px' } },
+      dataLabels: { enabled: true, formatter: v => fmt(v), style: { fontSize: '10px' } },
       tooltip: { ...chartTheme.tooltip, y: { formatter: v => fmt(v) + '명' } },
     })).render();
   } else {
@@ -949,7 +952,7 @@ function renderOverview() {
     }
     return null;
   })() : null;
-  document.getElementById('kpi-avg-engagement-per-post').innerHTML = `<span title="${fmt(avgEngPerPost)}">${fmtCompact(avgEngPerPost)}</span>` + gradeBadgeHtml(getGrade(marketerBenchmarks['kpi-avg-engagement-per-post'], avgEngPerPost)) + changeBadge(engPerPostChange);
+  document.getElementById('kpi-avg-engagement-per-post').innerHTML = `<span title="${fmt(avgEngPerPost)}">${fmtCell(avgEngPerPost)}</span>` + gradeBadgeHtml(getGrade(marketerBenchmarks['kpi-avg-engagement-per-post'], avgEngPerPost)) + changeBadge(engPerPostChange);
 
   const mReaches = posts.map(p => p.reach).filter(v => v != null);
   const mLatestFollowers = followers.length ? followers[followers.length - 1].followers : null;
@@ -1010,18 +1013,18 @@ function buildYesterdayMap() {
   });
 }
 
-// Format cell with change (compact numbers with tooltip)
+// Format cell with change (compact or full numbers with tooltip)
 function fmtWithChange(value, field, row) {
   if (value == null) return '-';
   const key = row.url || row.title;
   const prev = yesterdayMap.get(key);
-  let html = `<span title="${fmt(value)}">${fmtCompact(value)}</span>`;
+  let html = `<span title="${fmt(value)}">${fmtCell(value)}</span>`;
   if (prev && prev[field] != null) {
     const diff = value - prev[field];
     if (diff !== 0) {
       const sign = diff > 0 ? '+' : '';
       const cls = diff > 0 ? 'positive' : 'negative';
-      html += ` <span class="cell-change ${cls}">(${sign}${fmtCompact(diff)})</span>`;
+      html += ` <span class="cell-change ${cls}">(${sign}${fmtCell(diff)})</span>`;
     }
   }
   return html;
@@ -1030,7 +1033,14 @@ function fmtWithChange(value, field, row) {
 // Column definitions factory
 const colDef = {
   rank:       () => ({ title: '순위', field: '_rank', width: 60, hozAlign: 'center', sorter: 'number' }),
-  upload_date:() => ({ title: '업로드일', field: 'upload_date', width: 110, sorter: 'string' }),
+  upload_date:() => ({ title: '업로드일', field: 'upload_date', width: 110,
+    sorter: (a, b) => {
+      const da = parseUploadDate(a), db = parseUploadDate(b);
+      if (!da && !db) return 0;
+      if (!da) return -1;
+      if (!db) return 1;
+      return da - db;
+    }}),
   media_type: () => ({ title: '유형', field: 'media_type', width: 80, hozAlign: 'center', formatter: cell => typeLabel(cell.getValue()) }),
   category:   () => ({ title: '카테고리', field: 'category', width: 90, hozAlign: 'center' }),
   title:      () => ({ title: '제목', field: 'title', minWidth: 180,
@@ -1186,6 +1196,34 @@ document.getElementById('col-toggle-btn')?.addEventListener('click', () => {
   }
 });
 
+// K/M ↔ 숫자 토글 버튼
+document.getElementById('compact-toggle-btn')?.addEventListener('click', () => {
+  compactMode = !compactMode;
+  try { localStorage.setItem('compact-mode', String(compactMode)); } catch(e) {}
+  const btn = document.getElementById('compact-toggle-btn');
+  btn.classList.toggle('active', compactMode);
+  btn.textContent = compactMode ? 'K/M' : '숫자';
+  btn.title = compactMode ? '현재: K/M 축약 → 클릭하면 전체 숫자' : '현재: 전체 숫자 → 클릭하면 K/M 축약';
+  // 게시물 테이블 셀 다시 그리기
+  if (postTable) postTable.redraw(true);
+  // KPI 카드 숫자 갱신 (차트 제외한 가벼운 업데이트)
+  const posts = filterByMilestone(DATA.posts);
+  const mode = currentKpiMode;
+  if (mode === 'total' || mode === 'avg') renderKpiStats(mode, posts);
+  // 카테고리 & 콘텐츠 탭 테이블 갱신
+  renderCategory();
+  renderContent();
+});
+// 버튼 초기 상태 반영 (localStorage에서 복원된 경우)
+(() => {
+  const btn = document.getElementById('compact-toggle-btn');
+  if (btn) {
+    btn.classList.toggle('active', compactMode);
+    btn.textContent = compactMode ? 'K/M' : '숫자';
+    btn.title = compactMode ? '현재: K/M 축약 → 클릭하면 전체 숫자' : '현재: 전체 숫자 → 클릭하면 K/M 축약';
+  }
+})();
+
 // Recalculate rank based on sort field
 function recalcRankedData(posts, sortField, sortDir) {
   const sorted = [...posts];
@@ -1193,7 +1231,13 @@ function recalcRankedData(posts, sortField, sortDir) {
     // Use original composite rank
     sorted.sort((a, b) => (a.rank || 999) - (b.rank || 999));
   } else if (sortField === 'upload_date') {
-    sorted.sort((a, b) => sortDir === 'desc' ? b.upload_date.localeCompare(a.upload_date) : a.upload_date.localeCompare(b.upload_date));
+    sorted.sort((a, b) => {
+      const da = parseUploadDate(a.upload_date), db = parseUploadDate(b.upload_date);
+      if (!da && !db) return 0;
+      if (!da) return sortDir === 'desc' ? 1 : -1;
+      if (!db) return sortDir === 'desc' ? -1 : 1;
+      return sortDir === 'desc' ? db - da : da - db;
+    });
   } else {
     sorted.sort((a, b) => sortDir === 'desc' ? (b[sortField] || 0) - (a[sortField] || 0) : (a[sortField] || 0) - (b[sortField] || 0));
   }
@@ -1479,6 +1523,25 @@ function renderPostTable() {
     saveColumnOrder();
   });
 
+  // Tabulator 헤더 클릭 정렬 시 순위(_rank) 자동 동기화
+  let _rankTimer = null;
+  postTable.on('dataSorted', (sorters) => {
+    if (!sorters.length) return;
+    // 여러 번 연속 발생 시 마지막 것만 처리 (debounce)
+    clearTimeout(_rankTimer);
+    _rankTimer = setTimeout(() => {
+      const activeRows = postTable.getRows("active");
+      activeRows.forEach((row, i) => {
+        row.getData()._rank = i + 1;
+      });
+      // 모든 행의 순위 셀 DOM 갱신
+      postTable.getRows().forEach(row => {
+        const cell = row.getCell('_rank');
+        if (cell) cell.getElement().textContent = row.getData()._rank;
+      });
+    }, 50);
+  });
+
   // Row click → diagnosis modal
   postTable.on('rowClick', (e, row) => {
     if (e.target.tagName === 'A') return;
@@ -1492,6 +1555,8 @@ function renderPostTable() {
       const [field, dir] = this.value.split('|');
       currentSortField = field;
       const rankedData = recalcRankedData(filterByMilestone(DATA.posts), field, dir);
+      // Tabulator 내부 소터 클리어 → replaceData 순서 유지
+      postTable.clearSort();
       // 칼럼 순서 유지하면서 데이터만 교체
       if (userColumnOrder) {
         postTable.replaceData(rankedData);
@@ -1694,11 +1759,11 @@ function renderCategory() {
       { title: '평균 참여율', field: 'avgEngagement', width: 100, hozAlign: 'right', sorter: 'number',
         formatter: cell => cell.getValue().toFixed(1) + '%' },
       { title: '평균 도달', field: 'avgReach', width: 100, hozAlign: 'right', sorter: 'number',
-        formatter: cell => { const v = Math.round(cell.getValue()); return `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
+        formatter: cell => { const v = Math.round(cell.getValue()); return `<span title="${fmt(v)}">${fmtCell(v)}</span>`; } },
       { title: '평균 저장', field: 'avgSaves', width: 80, hozAlign: 'right', sorter: 'number',
-        formatter: cell => { const v = Math.round(cell.getValue()); return `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
+        formatter: cell => { const v = Math.round(cell.getValue()); return `<span title="${fmt(v)}">${fmtCell(v)}</span>`; } },
       { title: '평균 공유', field: 'avgShares', width: 80, hozAlign: 'right', sorter: 'number',
-        formatter: cell => { const v = Math.round(cell.getValue()); return `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
+        formatter: cell => { const v = Math.round(cell.getValue()); return `<span title="${fmt(v)}">${fmtCell(v)}</span>`; } },
       { title: '평균 종합점수', field: 'avgScore', width: 100, hozAlign: 'right', sorter: 'number',
         formatter: cell => cell.getValue().toFixed(1) },
     ],
@@ -2226,10 +2291,10 @@ function renderContent() {
           const row = cell.getRow().getData();
           return row.url ? `<a href="${row.url}" target="_blank" style="color:#F77737;text-decoration:none">${cell.getValue()}</a>` : cell.getValue();
         }},
-      { title: '도달', field: 'reach', width: 80, hozAlign: 'right', sorter: 'number', formatter: cell => { const v = cell.getValue(); return v == null ? '-' : `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
+      { title: '도달', field: 'reach', width: 80, hozAlign: 'right', sorter: 'number', formatter: cell => { const v = cell.getValue(); return v == null ? '-' : `<span title="${fmt(v)}">${fmtCell(v)}</span>`; } },
       { title: '참여율', field: 'engagement_rate', width: 70, hozAlign: 'right', formatter: cell => fmtPct(cell.getValue()) },
-      { title: '저장', field: 'saves', width: 60, hozAlign: 'right', formatter: cell => { const v = cell.getValue(); return v == null ? '-' : `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
-      { title: '공유', field: 'shares', width: 60, hozAlign: 'right', formatter: cell => { const v = cell.getValue(); return v == null ? '-' : `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
+      { title: '저장', field: 'saves', width: 60, hozAlign: 'right', formatter: cell => { const v = cell.getValue(); return v == null ? '-' : `<span title="${fmt(v)}">${fmtCell(v)}</span>`; } },
+      { title: '공유', field: 'shares', width: 60, hozAlign: 'right', formatter: cell => { const v = cell.getValue(); return v == null ? '-' : `<span title="${fmt(v)}">${fmtCell(v)}</span>`; } },
       { title: '점수', field: 'composite_score', width: 60, hozAlign: 'right', formatter: cell => cell.getValue()?.toFixed(1) || '-' },
     ],
   });
