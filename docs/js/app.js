@@ -1621,7 +1621,7 @@ function analyzePerformance(posts) {
   return { strengths, weaknesses, stats };
 }
 
-function renderSummary(period, year, month) {
+function renderSummary(period, year, month, weekStart, weekEnd, dateStr) {
   const allPosts = filterByMilestone(DATA.posts);
   let posts = allPosts;
   let periodLabel = '전체';
@@ -1632,6 +1632,13 @@ function renderSummary(period, year, month) {
   } else if (period === 'monthly' && year && month != null) {
     posts = allPosts.filter(p => { const d = parseUploadDate(p.upload_date); return d && d.getFullYear() === year && d.getMonth() === month; });
     periodLabel = `${year}년 ${month + 1}월`;
+  } else if (period === 'weekly' && weekStart && weekEnd) {
+    posts = allPosts.filter(p => { const d = parseUploadDate(p.upload_date); return d && d >= weekStart && d <= weekEnd; });
+    periodLabel = `${weekStart.getFullYear()}년 ${weekStart.getMonth()+1}월 ${weekStart.getDate()}일~${weekEnd.getDate()}일`;
+  } else if (period === 'daily' && dateStr) {
+    posts = allPosts.filter(p => { const d = parseUploadDate(p.upload_date); return d && d.toISOString().slice(0, 10) === dateStr; });
+    const dd = new Date(dateStr);
+    periodLabel = `${dd.getFullYear()}년 ${dd.getMonth()+1}월 ${dd.getDate()}일`;
   }
 
   const { strengths, weaknesses, stats } = analyzePerformance(posts);
@@ -1680,31 +1687,87 @@ function initSummaryControls() {
     selectors.innerHTML = '';
     if (mode === 'all') { renderSummary('all'); return; }
 
-    const yms = getAvailableYearMonths();
-    const years = [...new Set(yms.map(ym => ym.year))].sort((a, b) => b - a);
+    const yms = getAvailableYearMonths(); // returns ["2025-01", "2025-02", ...]
+    const years = [...new Set(yms.map(ym => ym.split('-')[0]))].sort((a, b) => b - a);
 
-    const yearSel = document.createElement('select');
-    yearSel.className = 'kpi-mode-dropdown';
-    years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y + '년'; yearSel.appendChild(o); });
-    selectors.appendChild(yearSel);
+    // 년도 셀렉터 (yearly, monthly, weekly 에서 사용)
+    if (mode === 'yearly' || mode === 'monthly' || mode === 'weekly') {
+      const yearSel = document.createElement('select');
+      yearSel.className = 'kpi-mode-dropdown';
+      years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y + '년'; yearSel.appendChild(o); });
+      selectors.appendChild(yearSel);
 
-    if (mode === 'monthly') {
-      const monthSel = document.createElement('select');
-      monthSel.className = 'kpi-mode-dropdown';
-      function fillMonths() {
-        const y = +yearSel.value;
-        const months = yms.filter(ym => ym.year === y).map(ym => ym.month).sort((a, b) => b - a);
-        monthSel.innerHTML = '';
-        months.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = (m + 1) + '월'; monthSel.appendChild(o); });
+      if (mode === 'yearly') {
+        yearSel.addEventListener('change', () => { renderSummary('yearly', +yearSel.value); });
+        renderSummary('yearly', +yearSel.value);
+
+      } else if (mode === 'monthly') {
+        const monthSel = document.createElement('select');
+        monthSel.className = 'kpi-mode-dropdown';
+        function fillMonths() {
+          const y = yearSel.value;
+          const months = yms.filter(ym => ym.split('-')[0] === y).map(ym => parseInt(ym.split('-')[1], 10)).sort((a, b) => b - a);
+          monthSel.innerHTML = '';
+          months.forEach(m => { const o = document.createElement('option'); o.value = m - 1; o.textContent = m + '월'; monthSel.appendChild(o); });
+        }
+        fillMonths();
+        selectors.appendChild(monthSel);
+        yearSel.addEventListener('change', () => { fillMonths(); renderSummary('monthly', +yearSel.value, +monthSel.value); });
+        monthSel.addEventListener('change', () => { renderSummary('monthly', +yearSel.value, +monthSel.value); });
+        renderSummary('monthly', +yearSel.value, +monthSel.value);
+
+      } else if (mode === 'weekly') {
+        const monthSel = document.createElement('select');
+        monthSel.className = 'kpi-mode-dropdown';
+        function fillMonthsW() {
+          const y = yearSel.value;
+          const months = yms.filter(ym => ym.split('-')[0] === y).map(ym => parseInt(ym.split('-')[1], 10)).sort((a, b) => b - a);
+          monthSel.innerHTML = '';
+          months.forEach(m => { const o = document.createElement('option'); o.value = m - 1; o.textContent = m + '월'; monthSel.appendChild(o); });
+        }
+        fillMonthsW();
+        selectors.appendChild(monthSel);
+
+        const weekSel = document.createElement('select');
+        weekSel.className = 'kpi-mode-dropdown';
+        function fillWeeks() {
+          const y = +yearSel.value; const m = +monthSel.value;
+          const weeks = getWeeksInMonth(y, m);
+          weekSel.innerHTML = '';
+          weeks.forEach(w => { const o = document.createElement('option'); o.value = JSON.stringify({ start: w.start.toISOString(), end: w.endDate.toISOString() }); o.textContent = w.label; weekSel.appendChild(o); });
+        }
+        fillWeeks();
+        selectors.appendChild(weekSel);
+
+        yearSel.addEventListener('change', () => { fillMonthsW(); fillWeeks(); triggerWeekly(); });
+        monthSel.addEventListener('change', () => { fillWeeks(); triggerWeekly(); });
+        weekSel.addEventListener('change', () => { triggerWeekly(); });
+        function triggerWeekly() {
+          if (!weekSel.value) return;
+          const w = JSON.parse(weekSel.value);
+          renderSummary('weekly', null, null, new Date(w.start), new Date(w.end));
+        }
+        triggerWeekly();
       }
-      fillMonths();
-      selectors.appendChild(monthSel);
-      yearSel.addEventListener('change', () => { fillMonths(); renderSummary('monthly', +yearSel.value, +monthSel.value); });
-      monthSel.addEventListener('change', () => { renderSummary('monthly', +yearSel.value, +monthSel.value); });
-      renderSummary('monthly', +yearSel.value, +monthSel.value);
-    } else {
-      yearSel.addEventListener('change', () => { renderSummary('yearly', +yearSel.value); });
-      renderSummary('yearly', +yearSel.value);
+
+    } else if (mode === 'daily') {
+      // 날짜 선택기
+      const dateSel = document.createElement('input');
+      dateSel.type = 'date';
+      dateSel.className = 'kpi-mode-dropdown';
+      // 기본값: 가장 최근 포스트 날짜
+      const allPosts = filterByMilestone(DATA.posts);
+      let latestDate = new Date();
+      allPosts.forEach(p => { const d = parseUploadDate(p.upload_date); if (d && d > latestDate) latestDate = d; });
+      // 가장 최근 데이터가 있는 날짜 찾기
+      const postDates = new Set();
+      allPosts.forEach(p => { const d = parseUploadDate(p.upload_date); if (d) postDates.add(d.toISOString().slice(0, 10)); });
+      const sortedDates = [...postDates].sort().reverse();
+      if (sortedDates.length) dateSel.value = sortedDates[0];
+      selectors.appendChild(dateSel);
+
+      dateSel.addEventListener('change', () => { renderSummary('daily', null, null, null, null, dateSel.value); });
+      if (dateSel.value) renderSummary('daily', null, null, null, null, dateSel.value);
     }
   }
 
@@ -1750,14 +1813,16 @@ function exportReport() {
   XLSX.utils.book_append_sheet(wb, ws1, '전체 요약');
 
   // Sheet 2: 월별 추이
-  const yms = getAvailableYearMonths();
+  const yms = getAvailableYearMonths(); // ["2025-01", ...]
   const monthlyData = [['년월', '게시물', '평균 도달', '참여율(%)', '저장율(%)', '공유율(%)', '총 도달', '총 좋아요', '총 저장', '총 공유', '총 댓글', '강점', '개선점']];
-  yms.sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month).forEach(ym => {
-    const mPosts = posts.filter(p => { const d = parseUploadDate(p.upload_date); return d && d.getFullYear() === ym.year && d.getMonth() === ym.month; });
+  yms.sort().forEach(ymStr => {
+    const [yStr, mStr] = ymStr.split('-');
+    const yr = parseInt(yStr, 10); const mo = parseInt(mStr, 10) - 1;
+    const mPosts = posts.filter(p => { const d = parseUploadDate(p.upload_date); return d && d.getFullYear() === yr && d.getMonth() === mo; });
     if (!mPosts.length) return;
     const a = analyzePerformance(mPosts);
     monthlyData.push([
-      `${ym.year}.${String(ym.month + 1).padStart(2, '0')}`,
+      `${yStr}.${mStr}`,
       a.stats.count, a.stats.avgReach, a.stats.avgEngRate, a.stats.avgSaveRate, a.stats.avgShareRate,
       a.stats.totalReach, a.stats.totalLikes, a.stats.totalSaves, a.stats.totalShares, a.stats.totalComments,
       a.strengths.map(s => s.replace(/<[^>]*>/g, '')).join(' / '),
