@@ -1514,6 +1514,308 @@ function renderCategory() {
 }
 
 // ══════════════════════════════════════════════════
+// Performance Summary Analysis
+// ══════════════════════════════════════════════════
+function analyzePerformance(posts) {
+  if (!posts.length) return { strengths: [], weaknesses: [], stats: {} };
+
+  const reaches = posts.map(p => p.reach).filter(v => v != null);
+  const engRates = posts.map(p => p.engagement_rate).filter(v => v != null);
+  const saveRates = posts.map(p => p.save_rate).filter(v => v != null);
+  const shareRates = posts.map(p => p.share_rate).filter(v => v != null);
+  const likes = posts.map(p => p.likes).filter(v => v != null);
+  const saves = posts.map(p => p.saves).filter(v => v != null);
+  const shares = posts.map(p => p.shares).filter(v => v != null);
+  const comments = posts.map(p => p.comments).filter(v => v != null);
+  const follows = posts.map(p => p.follows).filter(v => v != null);
+
+  const stats = {
+    count: posts.length,
+    avgReach: Math.round(avg(reaches)),
+    avgEngRate: +avg(engRates).toFixed(2),
+    avgSaveRate: +avg(saveRates).toFixed(2),
+    avgShareRate: +avg(shareRates).toFixed(2),
+    totalReach: sum(reaches),
+    totalLikes: sum(likes),
+    totalSaves: sum(saves),
+    totalShares: sum(shares),
+    totalComments: sum(comments),
+    totalFollows: sum(follows),
+  };
+
+  const strengths = [];
+  const weaknesses = [];
+
+  // Engagement rate analysis
+  const engGrade = getGrade(statBenchmarks.engagement_rate, stats.avgEngRate);
+  if (engGrade && (engGrade.cls === 'excellent' || engGrade.cls === 'good')) {
+    strengths.push(`평균 참여율 <strong>${stats.avgEngRate}%</strong> (${engGrade.label}) — 여행 업종 평균(1.2%) ${stats.avgEngRate >= 1.2 ? '이상' : '수준'}의 반응`);
+  } else if (engGrade && engGrade.cls === 'low') {
+    weaknesses.push(`평균 참여율 <strong>${stats.avgEngRate}%</strong> (${engGrade.label}) — 도달 대비 반응이 부족. 질문형 캡션, CTA 추가 검토`);
+  }
+
+  // Save rate analysis
+  const saveGrade = getGrade(statBenchmarks.save_rate, stats.avgSaveRate);
+  if (saveGrade && (saveGrade.cls === 'excellent' || saveGrade.cls === 'good')) {
+    strengths.push(`평균 저장율 <strong>${stats.avgSaveRate}%</strong> (${saveGrade.label}) — 콘텐츠 가치가 높아 사용자가 저장하는 비율 우수`);
+  } else if (saveGrade && saveGrade.cls === 'low') {
+    weaknesses.push(`평균 저장율 <strong>${stats.avgSaveRate}%</strong> (${saveGrade.label}) — 정보성/실용적 콘텐츠(여행 팁, 코스 추천 등) 비율 확대 필요`);
+  }
+
+  // Share rate analysis
+  const shareGrade = getGrade(statBenchmarks.share_rate, stats.avgShareRate);
+  if (shareGrade && (shareGrade.cls === 'excellent' || shareGrade.cls === 'good')) {
+    strengths.push(`평균 공유율 <strong>${stats.avgShareRate}%</strong> (${shareGrade.label}) — 바이럴 잠재력 높음. 2025 IG 알고리즘이 공유를 최우선 반영`);
+  } else if (shareGrade && shareGrade.cls === 'low') {
+    weaknesses.push(`평균 공유율 <strong>${stats.avgShareRate}%</strong> (${shareGrade.label}) — 공유 유도 콘텐츠(밈, 감성 영상, "친구 태그" 등) 시도 필요`);
+  }
+
+  // Content type analysis
+  const typeMap = {};
+  posts.forEach(p => { const t = p.media_type || 'OTHER'; if (!typeMap[t]) typeMap[t] = []; typeMap[t].push(p); });
+  const typeEntries = Object.entries(typeMap);
+  if (typeEntries.length >= 2) {
+    const typeAvgs = typeEntries.map(([type, items]) => ({
+      type, label: typeLabel(type),
+      avgReach: avg(items.map(p => p.reach).filter(v => v != null)),
+      avgSaveRate: avg(items.map(p => p.save_rate).filter(v => v != null)),
+      count: items.length,
+    }));
+    const bestReachType = [...typeAvgs].sort((a, b) => b.avgReach - a.avgReach)[0];
+    const bestSaveType = [...typeAvgs].sort((a, b) => b.avgSaveRate - a.avgSaveRate)[0];
+    if (bestReachType) strengths.push(`<strong>${bestReachType.label}</strong>의 평균 도달(${fmt(Math.round(bestReachType.avgReach))})이 가장 높음 — 도달 확대에 효과적`);
+    if (bestSaveType && bestSaveType.type !== bestReachType.type) {
+      strengths.push(`<strong>${bestSaveType.label}</strong>의 저장율(${bestSaveType.avgSaveRate.toFixed(1)}%)이 가장 높음 — 콘텐츠 가치 전달에 효과적`);
+    }
+  }
+
+  // Category analysis
+  const catMap = {};
+  posts.forEach(p => { const c = p.category || '미분류'; if (!catMap[c]) catMap[c] = []; catMap[c].push(p); });
+  const catEntries = Object.entries(catMap).filter(([, items]) => items.length >= 3);
+  if (catEntries.length >= 2) {
+    const catAvgs = catEntries.map(([cat, items]) => ({
+      cat, avgEng: avg(items.map(p => p.engagement_rate).filter(v => v != null)), count: items.length,
+    }));
+    const bestCat = [...catAvgs].sort((a, b) => b.avgEng - a.avgEng)[0];
+    const worstCat = [...catAvgs].sort((a, b) => a.avgEng - b.avgEng)[0];
+    if (bestCat) strengths.push(`카테고리 <strong>${bestCat.cat}</strong>의 참여율(${bestCat.avgEng.toFixed(1)}%)이 가장 높음 — 이 주제의 콘텐츠 확대 권장`);
+    if (worstCat && worstCat.cat !== bestCat.cat && worstCat.avgEng < stats.avgEngRate * 0.7) {
+      weaknesses.push(`카테고리 <strong>${worstCat.cat}</strong>의 참여율(${worstCat.avgEng.toFixed(1)}%)이 가장 낮음 — 주제 전환 또는 형식 변경 검토`);
+    }
+  }
+
+  // Follow conversion
+  if (stats.totalFollows > 0 && stats.totalReach > 0) {
+    const followRate = (stats.totalFollows / stats.totalReach * 100);
+    if (followRate > 0.1) {
+      strengths.push(`팔로우 전환율 <strong>${followRate.toFixed(2)}%</strong> — 콘텐츠가 팔로우로 이어지는 비율이 양호`);
+    }
+  }
+
+  // Check if posting is consistent
+  if (posts.length < 10) {
+    weaknesses.push(`분석 기간 내 게시물이 <strong>${posts.length}개</strong>로 적음 — 일관된 포스팅 빈도 유지 필요`);
+  }
+
+  return { strengths, weaknesses, stats };
+}
+
+function renderSummary(period, year, month) {
+  const allPosts = filterByMilestone(DATA.posts);
+  let posts = allPosts;
+  let periodLabel = '전체';
+
+  if (period === 'yearly' && year) {
+    posts = allPosts.filter(p => { const d = parseUploadDate(p.upload_date); return d && d.getFullYear() === year; });
+    periodLabel = `${year}년`;
+  } else if (period === 'monthly' && year && month != null) {
+    posts = allPosts.filter(p => { const d = parseUploadDate(p.upload_date); return d && d.getFullYear() === year && d.getMonth() === month; });
+    periodLabel = `${year}년 ${month + 1}월`;
+  }
+
+  const { strengths, weaknesses, stats } = analyzePerformance(posts);
+  const container = document.getElementById('summary-content');
+  if (!posts.length) { container.innerHTML = '<p style="color:var(--text2)">해당 기간의 데이터가 없습니다.</p>'; return; }
+
+  let html = '';
+  // Overview stats
+  html += `<div class="summary-overview">`;
+  html += `<div class="summary-stat"><div class="summary-stat-label">기간</div><div class="summary-stat-value">${periodLabel}</div></div>`;
+  html += `<div class="summary-stat"><div class="summary-stat-label">게시물</div><div class="summary-stat-value">${stats.count}</div></div>`;
+  html += `<div class="summary-stat"><div class="summary-stat-label">평균 도달</div><div class="summary-stat-value">${fmt(stats.avgReach)}</div></div>`;
+  html += `<div class="summary-stat"><div class="summary-stat-label">참여율</div><div class="summary-stat-value">${fmtPct(stats.avgEngRate)}${gradeBadgeHtml(getGrade(statBenchmarks.engagement_rate, stats.avgEngRate))}</div></div>`;
+  html += `<div class="summary-stat"><div class="summary-stat-label">저장율</div><div class="summary-stat-value">${fmtPct(stats.avgSaveRate)}${gradeBadgeHtml(getGrade(statBenchmarks.save_rate, stats.avgSaveRate))}</div></div>`;
+  html += `<div class="summary-stat"><div class="summary-stat-label">공유율</div><div class="summary-stat-value">${fmtPct(stats.avgShareRate)}${gradeBadgeHtml(getGrade(statBenchmarks.share_rate, stats.avgShareRate))}</div></div>`;
+  html += `</div>`;
+
+  // Strengths & Weaknesses
+  html += `<div class="summary-grid">`;
+  html += `<div class="summary-card"><h4 class="positive">✓ 강점</h4>`;
+  if (strengths.length) {
+    html += `<ul class="summary-list">${strengths.map(s => `<li>${s}</li>`).join('')}</ul>`;
+  } else {
+    html += `<p style="color:var(--text2);font-size:13px">데이터 부족으로 분석 불가</p>`;
+  }
+  html += `</div>`;
+  html += `<div class="summary-card"><h4 class="negative">✗ 개선점</h4>`;
+  if (weaknesses.length) {
+    html += `<ul class="summary-list">${weaknesses.map(w => `<li>${w}</li>`).join('')}</ul>`;
+  } else {
+    html += `<p style="color:var(--text2);font-size:13px">특별한 개선점 없음 — 현재 전략 유지 권장</p>`;
+  }
+  html += `</div>`;
+  html += `</div>`;
+
+  container.innerHTML = html;
+}
+
+function initSummaryControls() {
+  const select = document.getElementById('summary-period-select');
+  const selectors = document.getElementById('summary-period-selectors');
+  if (!select) return;
+
+  function updateSelectors() {
+    const mode = select.value;
+    selectors.innerHTML = '';
+    if (mode === 'all') { renderSummary('all'); return; }
+
+    const yms = getAvailableYearMonths();
+    const years = [...new Set(yms.map(ym => ym.year))].sort((a, b) => b - a);
+
+    const yearSel = document.createElement('select');
+    yearSel.className = 'kpi-mode-dropdown';
+    years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y + '년'; yearSel.appendChild(o); });
+    selectors.appendChild(yearSel);
+
+    if (mode === 'monthly') {
+      const monthSel = document.createElement('select');
+      monthSel.className = 'kpi-mode-dropdown';
+      function fillMonths() {
+        const y = +yearSel.value;
+        const months = yms.filter(ym => ym.year === y).map(ym => ym.month).sort((a, b) => b - a);
+        monthSel.innerHTML = '';
+        months.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = (m + 1) + '월'; monthSel.appendChild(o); });
+      }
+      fillMonths();
+      selectors.appendChild(monthSel);
+      yearSel.addEventListener('change', () => { fillMonths(); renderSummary('monthly', +yearSel.value, +monthSel.value); });
+      monthSel.addEventListener('change', () => { renderSummary('monthly', +yearSel.value, +monthSel.value); });
+      renderSummary('monthly', +yearSel.value, +monthSel.value);
+    } else {
+      yearSel.addEventListener('change', () => { renderSummary('yearly', +yearSel.value); });
+      renderSummary('yearly', +yearSel.value);
+    }
+  }
+
+  select.addEventListener('change', updateSelectors);
+  updateSelectors();
+}
+
+// ── Excel Report Export ──
+function exportReport() {
+  if (typeof XLSX === 'undefined') { alert('엑셀 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
+
+  const posts = filterByMilestone(DATA.posts);
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: 전체 요약
+  const overall = analyzePerformance(posts);
+  const summaryRows = [
+    ['IG 인사이트 성과 보고서'],
+    ['생성일', new Date().toLocaleDateString('ko-KR')],
+    ['기간', milestoneFilter === 'all' ? '전체' : milestoneFilter === 'after' ? '담당 이후 (2025.12.26~)' : '담당 이전 (~2025.12.25)'],
+    [],
+    ['■ 전체 요약'],
+    ['게시물 수', overall.stats.count],
+    ['평균 도달', overall.stats.avgReach],
+    ['평균 참여율', overall.stats.avgEngRate + '%'],
+    ['평균 저장율', overall.stats.avgSaveRate + '%'],
+    ['평균 공유율', overall.stats.avgShareRate + '%'],
+    ['총 도달', overall.stats.totalReach],
+    ['총 좋아요', overall.stats.totalLikes],
+    ['총 저장', overall.stats.totalSaves],
+    ['총 공유', overall.stats.totalShares],
+    ['총 댓글', overall.stats.totalComments],
+    ['총 팔로우 유입', overall.stats.totalFollows],
+    [],
+    ['■ 강점'],
+    ...overall.strengths.map(s => [s.replace(/<[^>]*>/g, '')]),
+    [],
+    ['■ 개선점'],
+    ...overall.weaknesses.map(w => [w.replace(/<[^>]*>/g, '')]),
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+  ws1['!cols'] = [{ wch: 20 }, { wch: 40 }];
+  XLSX.utils.book_append_sheet(wb, ws1, '전체 요약');
+
+  // Sheet 2: 월별 추이
+  const yms = getAvailableYearMonths();
+  const monthlyData = [['년월', '게시물', '평균 도달', '참여율(%)', '저장율(%)', '공유율(%)', '총 도달', '총 좋아요', '총 저장', '총 공유', '총 댓글', '강점', '개선점']];
+  yms.sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month).forEach(ym => {
+    const mPosts = posts.filter(p => { const d = parseUploadDate(p.upload_date); return d && d.getFullYear() === ym.year && d.getMonth() === ym.month; });
+    if (!mPosts.length) return;
+    const a = analyzePerformance(mPosts);
+    monthlyData.push([
+      `${ym.year}.${String(ym.month + 1).padStart(2, '0')}`,
+      a.stats.count, a.stats.avgReach, a.stats.avgEngRate, a.stats.avgSaveRate, a.stats.avgShareRate,
+      a.stats.totalReach, a.stats.totalLikes, a.stats.totalSaves, a.stats.totalShares, a.stats.totalComments,
+      a.strengths.map(s => s.replace(/<[^>]*>/g, '')).join(' / '),
+      a.weaknesses.map(w => w.replace(/<[^>]*>/g, '')).join(' / '),
+    ]);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(monthlyData);
+  ws2['!cols'] = [{ wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 50 }, { wch: 50 }];
+  XLSX.utils.book_append_sheet(wb, ws2, '월별 추이');
+
+  // Sheet 3: 게시물 상세
+  const postData = posts.map(p => ({
+    '순위': p.rank || '',
+    '날짜': p.upload_date || '',
+    '유형': typeLabel(p.media_type),
+    '카테고리': p.category || '',
+    '제목': p.title || '',
+    '도달': p.reach || 0,
+    '조회수': p.views || 0,
+    '좋아요': p.likes || 0,
+    '저장': p.saves || 0,
+    '공유': p.shares || 0,
+    '댓글': p.comments || 0,
+    '참여율(%)': p.engagement_rate || 0,
+    '저장율(%)': p.save_rate || 0,
+    '공유율(%)': p.share_rate || 0,
+    '팔로우': p.follows || 0,
+    'URL': p.url || '',
+  }));
+  const ws3 = XLSX.utils.json_to_sheet(postData);
+  ws3['!cols'] = [{ wch: 6 }, { wch: 14 }, { wch: 8 }, { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 8 }, { wch: 40 }];
+  XLSX.utils.book_append_sheet(wb, ws3, '게시물 상세');
+
+  // Sheet 4: 콘텐츠 유형별
+  const typeMap = {};
+  posts.forEach(p => { const t = p.media_type || 'OTHER'; if (!typeMap[t]) typeMap[t] = []; typeMap[t].push(p); });
+  const typeData = [['유형', '게시물 수', '평균 도달', '평균 참여율(%)', '평균 저장율(%)', '평균 공유율(%)', '평균 좋아요', '평균 저장', '평균 공유']];
+  Object.entries(typeMap).forEach(([type, items]) => {
+    typeData.push([
+      typeLabel(type), items.length,
+      Math.round(avg(items.map(p => p.reach).filter(v => v != null))),
+      +avg(items.map(p => p.engagement_rate).filter(v => v != null)).toFixed(2),
+      +avg(items.map(p => p.save_rate).filter(v => v != null)).toFixed(2),
+      +avg(items.map(p => p.share_rate).filter(v => v != null)).toFixed(2),
+      Math.round(avg(items.map(p => p.likes).filter(v => v != null))),
+      Math.round(avg(items.map(p => p.saves).filter(v => v != null))),
+      Math.round(avg(items.map(p => p.shares).filter(v => v != null))),
+    ]);
+  });
+  const ws4 = XLSX.utils.aoa_to_sheet(typeData);
+  XLSX.utils.book_append_sheet(wb, ws4, '유형별 분석');
+
+  // Download
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  XLSX.writeFile(wb, `IG_인사이트_보고서_${dateStr}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════
 // TAB 5: Content Analysis
 // ══════════════════════════════════════════════════
 function renderContent() {
@@ -1672,6 +1974,9 @@ function renderContent() {
       { title: '점수', field: 'composite_score', width: 60, hozAlign: 'right', formatter: cell => cell.getValue()?.toFixed(1) || '-' },
     ],
   });
+
+  // Initialize summary section
+  initSummaryControls();
 }
 
 // ══════════════════════════════════════════════════
@@ -1822,6 +2127,9 @@ const WORKER_URL = ''; // Cloudflare Worker URL을 여기에 설정
 
 document.addEventListener('DOMContentLoaded', () => {
   init();
+
+  // Export report button
+  document.getElementById('export-report-btn')?.addEventListener('click', exportReport);
 
   const btn = document.getElementById('manual-update-btn');
   if (!btn) return;

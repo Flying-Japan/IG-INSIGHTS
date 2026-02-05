@@ -282,6 +282,22 @@
 
     <!-- 5. Content Analysis Tab -->
     <section id="tab-content" class="tab-content">
+      <!-- Performance Summary -->
+      <div class="summary-section">
+        <div class="summary-header">
+          <h3>성과 분석 요약</h3>
+          <div class="summary-controls">
+            <select class="kpi-mode-dropdown" id="summary-period-select">
+              <option value="all">전체 평균</option>
+              <option value="yearly">년도별</option>
+              <option value="monthly">월별</option>
+            </select>
+            <div id="summary-period-selectors" class="kpi-period-selectors"></div>
+            <button class="update-btn" id="export-report-btn" title="엑셀 보고서 다운로드">📊 보고서 다운로드</button>
+          </div>
+        </div>
+        <div id="summary-content"></div>
+      </div>
       <div class="insight-box" id="content-insights"></div>
       <div id="metric-champions" class="metric-champions"></div>
       <div class="chart-grid">
@@ -315,6 +331,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
