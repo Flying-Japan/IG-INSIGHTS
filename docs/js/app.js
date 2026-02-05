@@ -175,6 +175,22 @@ const statLabels = {
   engagement: '참여', engagement_rate: '참여율', save_rate: '저장율',
   share_rate: '공유율', follows: '팔로우 유입 (릴스제외)', top_post: 'TOP 게시물',
 };
+const statTooltips = {
+  posts: '선택된 기간 내 업로드된 게시물의 총 개수',
+  followers: '가장 최근 기록된 팔로워 수 (전일 대비 변화 포함)',
+  reach: '게시물이 노출된 고유 계정 수의 합계 또는 평균',
+  views: '게시물이 조회된 총 횟수 (중복 포함)',
+  likes: '게시물에 달린 좋아요의 합계 또는 평균',
+  saves: '사용자가 게시물을 저장한 횟수의 합계 또는 평균',
+  shares: '게시물이 공유된 횟수의 합계 또는 평균',
+  comments: '게시물에 달린 댓글의 합계 또는 평균',
+  engagement: '좋아요 + 저장 + 공유 + 댓글의 합계 또는 평균',
+  engagement_rate: '(참여 / 도달) × 100. 도달 대비 얼마나 반응했는지의 비율',
+  save_rate: '(저장 / 도달) × 100. 콘텐츠를 저장할 만큼 가치를 느낀 비율',
+  share_rate: '(공유 / 도달) × 100. 다른 사람에게 공유할 만큼 가치를 느낀 비율',
+  follows: '게시물을 보고 팔로우한 수의 합계 또는 평균. Instagram API 특성상 릴스 데이터는 제외됨',
+  top_post: '종합순위 1위 또는 도달 기준 가장 높은 게시물',
+};
 let visibleStats = new Set(statIds);
 let currentKpiMode = 'total';
 
@@ -269,7 +285,10 @@ function renderKpiStats(mode, periodPosts) {
     const labelEl = document.getElementById(`kpi-stat-${f.id}-label`);
     const valueEl = document.getElementById(`kpi-total-${f.id}`);
     if (card) card.style.display = visibleStats.has(f.id) ? '' : 'none';
-    if (labelEl) labelEl.textContent = f.label;
+    if (labelEl) {
+      const tooltip = statTooltips[f.id];
+      labelEl.innerHTML = f.label + (tooltip ? ` <span class="kpi-tooltip-wrap"><span class="kpi-tooltip-icon">ⓘ</span><span class="kpi-tooltip-text">${tooltip}</span></span>` : '');
+    }
 
     if (f.id === 'top_post') {
       const top = posts.find(p => p.rank === 1) || (posts.length ? [...posts].sort((a,b) => (b.reach||0)-(a.reach||0))[0] : null);
