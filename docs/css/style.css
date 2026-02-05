@@ -387,7 +387,7 @@ body {
   color: var(--text);
   line-height: 1.6;
   white-space: normal;
-  width: 240px;
+  width: 260px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.4);
   z-index: 100;
   text-align: left;
@@ -403,6 +403,86 @@ body {
 }
 .kpi-tooltip-wrap:hover .kpi-tooltip-text {
   display: block;
+}
+
+/* ── KPI Grade Badge ── */
+.kpi-grade {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 0.3px;
+}
+.kpi-grade.excellent {
+  color: #00c853;
+  background: rgba(0, 200, 83, 0.15);
+}
+.kpi-grade.good {
+  color: #448aff;
+  background: rgba(68, 138, 255, 0.15);
+}
+.kpi-grade.normal {
+  color: #ffd600;
+  background: rgba(255, 214, 0, 0.12);
+}
+.kpi-grade.low {
+  color: #ff5252;
+  background: rgba(255, 82, 82, 0.15);
+}
+
+/* ── Benchmark Scale (in tooltip) ── */
+.kpi-benchmark-scale {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.benchmark-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text2);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.benchmark-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  gap: 1px;
+}
+.benchmark-seg {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.benchmark-seg.low { background: rgba(255, 82, 82, 0.5); }
+.benchmark-seg.normal { background: rgba(255, 214, 0, 0.5); }
+.benchmark-seg.good { background: rgba(68, 138, 255, 0.5); }
+.benchmark-seg.excellent { background: rgba(0, 200, 83, 0.5); }
+.seg-label {
+  font-size: 0;
+  visibility: hidden;
+}
+.benchmark-labels {
+  display: flex;
+  margin-top: 3px;
+}
+.benchmark-val {
+  font-size: 9px;
+  color: var(--text2);
+  text-align: center;
+}
+.benchmark-note {
+  font-size: 10px;
+  color: var(--text2);
+  margin-top: 6px;
+  line-height: 1.5;
+  opacity: 0.8;
 }
 
 /* ── Charts ── */

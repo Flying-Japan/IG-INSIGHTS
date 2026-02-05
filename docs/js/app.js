@@ -191,6 +191,110 @@ const statTooltips = {
   follows: '게시물을 보고 팔로우한 수의 합계 또는 평균. Instagram API 특성상 릴스 데이터는 제외됨',
   top_post: '종합순위 1위 또는 도달 기준 가장 높은 게시물',
 };
+
+// ── Benchmark grading (Instagram industry averages) ──
+// Each entry: { grades: [{min, label, cls}], unit, scaleNote }
+// grades ordered from highest threshold downward
+const statBenchmarks = {
+  engagement_rate: {
+    grades: [
+      { min: 6, label: '우수', cls: 'excellent' },
+      { min: 3, label: '양호', cls: 'good' },
+      { min: 1, label: '보통', cls: 'normal' },
+      { min: 0, label: '미흡', cls: 'low' },
+    ],
+    unit: '%',
+    scaleNote: '인스타그램 평균 참여율은 약 1~3%. 6% 이상이면 매우 높은 수준',
+  },
+  save_rate: {
+    grades: [
+      { min: 3, label: '우수', cls: 'excellent' },
+      { min: 1.5, label: '양호', cls: 'good' },
+      { min: 0.5, label: '보통', cls: 'normal' },
+      { min: 0, label: '미흡', cls: 'low' },
+    ],
+    unit: '%',
+    scaleNote: '저장율 1.5% 이상이면 양호. 3% 이상은 콘텐츠 가치가 매우 높음',
+  },
+  share_rate: {
+    grades: [
+      { min: 2, label: '우수', cls: 'excellent' },
+      { min: 1, label: '양호', cls: 'good' },
+      { min: 0.3, label: '보통', cls: 'normal' },
+      { min: 0, label: '미흡', cls: 'low' },
+    ],
+    unit: '%',
+    scaleNote: '공유율 1% 이상이면 양호. 2% 이상은 바이럴 잠재력이 높음',
+  },
+};
+// For marketer KPIs (not in statFields but rendered separately)
+const marketerBenchmarks = {
+  'kpi-avg-save-rate': statBenchmarks.save_rate,
+  'kpi-avg-share-rate': statBenchmarks.share_rate,
+  'kpi-avg-engagement-per-post': {
+    grades: [
+      { min: 500, label: '우수', cls: 'excellent' },
+      { min: 200, label: '양호', cls: 'good' },
+      { min: 50, label: '보통', cls: 'normal' },
+      { min: 0, label: '미흡', cls: 'low' },
+    ],
+    unit: '',
+    scaleNote: '게시물당 참여 200 이상이면 양호. 팔로워 규모에 따라 달라질 수 있음',
+  },
+  'kpi-reach-rate': {
+    grades: [
+      { min: 200, label: '우수', cls: 'excellent' },
+      { min: 80, label: '양호', cls: 'good' },
+      { min: 30, label: '보통', cls: 'normal' },
+      { min: 0, label: '미흡', cls: 'low' },
+    ],
+    unit: '%',
+    scaleNote: '팔로워 대비 도달 80% 이상이면 양호. 100% 초과 시 비팔로워 유입이 활발',
+  },
+};
+
+function getGrade(benchmark, value) {
+  if (value == null || !benchmark) return null;
+  for (const g of benchmark.grades) {
+    if (value >= g.min) return g;
+  }
+  return benchmark.grades[benchmark.grades.length - 1];
+}
+
+function gradeBadgeHtml(grade) {
+  if (!grade) return '';
+  return ` <span class="kpi-grade ${grade.cls}">${grade.label}</span>`;
+}
+
+function benchmarkScaleHtml(benchmark, currentValue) {
+  if (!benchmark) return '';
+  const grades = benchmark.grades;
+  let html = '<div class="kpi-benchmark-scale">';
+  html += '<div class="benchmark-title">업계 기준</div>';
+  html += '<div class="benchmark-bar">';
+  const colors = { excellent: '#00c853', good: '#448aff', normal: '#ffd600', low: '#ff5252' };
+  const widths = [25, 25, 25, 25]; // equal width segments
+  // Render segments (reversed: low→excellent, left to right)
+  const reversed = [...grades].reverse();
+  reversed.forEach((g, i) => {
+    const nextMin = i < reversed.length - 1 ? reversed[i + 1].min : '';
+    const label = g.min + (benchmark.unit || '') + (nextMin !== '' ? '' : '+');
+    html += `<div class="benchmark-seg ${g.cls}" style="width:${widths[i]}%"><span class="seg-label">${g.label}</span></div>`;
+  });
+  html += '</div>';
+  // Labels below
+  html += '<div class="benchmark-labels">';
+  reversed.forEach((g, i) => {
+    html += `<span class="benchmark-val" style="width:${widths[i]}%">${g.min}${benchmark.unit}</span>`;
+  });
+  html += '</div>';
+  if (benchmark.scaleNote) {
+    html += `<div class="benchmark-note">${benchmark.scaleNote}</div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
 let visibleStats = new Set(statIds);
 let currentKpiMode = 'total';
 
@@ -287,7 +391,9 @@ function renderKpiStats(mode, periodPosts) {
     if (card) card.style.display = visibleStats.has(f.id) ? '' : 'none';
     if (labelEl) {
       const tooltip = statTooltips[f.id];
-      labelEl.innerHTML = f.label + (tooltip ? ` <span class="kpi-tooltip-wrap"><span class="kpi-tooltip-icon">ⓘ</span><span class="kpi-tooltip-text">${tooltip}</span></span>` : '');
+      const bm = statBenchmarks[f.id];
+      const scaleHtml = benchmarkScaleHtml(bm, f.val);
+      labelEl.innerHTML = f.label + (tooltip ? ` <span class="kpi-tooltip-wrap"><span class="kpi-tooltip-icon">ⓘ</span><span class="kpi-tooltip-text">${tooltip}${scaleHtml}</span></span>` : '');
     }
 
     if (f.id === 'top_post') {
@@ -309,7 +415,9 @@ function renderKpiStats(mode, periodPosts) {
     if (valueEl) {
       const formatted = f.isPct ? fmtPct(f.val) : fmt(f.val);
       const showChange = isTotal && f.daily;
-      valueEl.innerHTML = formatted + (showChange ? changeBadge(getDailyChange(daily, f.daily), f.isPct) : '');
+      const bm = statBenchmarks[f.id];
+      const grade = getGrade(bm, f.val);
+      valueEl.innerHTML = formatted + gradeBadgeHtml(grade) + (showChange ? changeBadge(getDailyChange(daily, f.daily), f.isPct) : '');
     }
   });
 }
@@ -703,8 +811,10 @@ function renderOverview() {
   // ── Marketer KPIs ──
   const mSaveRates = posts.map(p => p.save_rate).filter(v => v != null);
   const mShareRates = posts.map(p => p.share_rate).filter(v => v != null);
-  document.getElementById('kpi-avg-save-rate').innerHTML = fmtPct(avg(mSaveRates)) + changeBadge(getDailyChange(daily, 'avg_save_rate'), true);
-  document.getElementById('kpi-avg-share-rate').innerHTML = fmtPct(avg(mShareRates)) + changeBadge(getDailyChange(daily, 'avg_share_rate'), true);
+  const avgSaveRate = avg(mSaveRates);
+  const avgShareRate = avg(mShareRates);
+  document.getElementById('kpi-avg-save-rate').innerHTML = fmtPct(avgSaveRate) + gradeBadgeHtml(getGrade(marketerBenchmarks['kpi-avg-save-rate'], avgSaveRate)) + changeBadge(getDailyChange(daily, 'avg_save_rate'), true);
+  document.getElementById('kpi-avg-share-rate').innerHTML = fmtPct(avgShareRate) + gradeBadgeHtml(getGrade(marketerBenchmarks['kpi-avg-share-rate'], avgShareRate)) + changeBadge(getDailyChange(daily, 'avg_share_rate'), true);
 
   const avgEngPerPost = posts.length ? Math.round(sum(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0))) / posts.length) : 0;
   const engPerPostChange = daily.length >= 2 ? (() => {
@@ -714,12 +824,12 @@ function renderOverview() {
     }
     return null;
   })() : null;
-  document.getElementById('kpi-avg-engagement-per-post').innerHTML = fmt(avgEngPerPost) + changeBadge(engPerPostChange);
+  document.getElementById('kpi-avg-engagement-per-post').innerHTML = fmt(avgEngPerPost) + gradeBadgeHtml(getGrade(marketerBenchmarks['kpi-avg-engagement-per-post'], avgEngPerPost)) + changeBadge(engPerPostChange);
 
   const mReaches = posts.map(p => p.reach).filter(v => v != null);
   const mLatestFollowers = followers.length ? followers[followers.length - 1].followers : null;
   const reachRate = mLatestFollowers ? (avg(mReaches) / mLatestFollowers * 100) : 0;
-  document.getElementById('kpi-reach-rate').textContent = fmtPct(reachRate);
+  document.getElementById('kpi-reach-rate').innerHTML = fmtPct(reachRate) + gradeBadgeHtml(getGrade(marketerBenchmarks['kpi-reach-rate'], reachRate));
 
   // ── Contribution Analysis (운영 기여도) ──
   renderContribution();
