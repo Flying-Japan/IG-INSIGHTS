@@ -158,6 +158,32 @@ function renderAll() {
   renderContent();
 }
 
+// ── KPI Stats (Total/Avg toggle) ──
+function renderKpiStats(mode) {
+  const statFields = window._kpiStatFields;
+  const daily = window._kpiDaily;
+  if (!statFields) return;
+  const isAvg = mode === 'avg';
+  statFields.forEach(f => {
+    const labelEl = document.getElementById(`kpi-stat-${f.id}-label`);
+    const valueEl = document.getElementById(`kpi-total-${f.id}`);
+    if (labelEl) labelEl.textContent = isAvg ? f.labelA : f.labelT;
+    if (valueEl) {
+      const val = isAvg ? f.avgVal : f.sumVal;
+      valueEl.innerHTML = fmt(val) + (isAvg ? '' : changeBadge(getDailyChange(daily, f.daily)));
+    }
+  });
+}
+
+// KPI toggle binding (once)
+document.getElementById('kpi-mode-toggle')?.addEventListener('click', e => {
+  const btn = e.target.closest('.toggle-btn');
+  if (!btn || !btn.dataset.mode) return;
+  document.querySelectorAll('#kpi-mode-toggle .toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderKpiStats(btn.dataset.mode);
+});
+
 // ══════════════════════════════════════════════════
 // TAB 1: Overview
 // ══════════════════════════════════════════════════
@@ -195,18 +221,38 @@ function renderOverview() {
   const totalLikes = sum(posts.map(p => p.likes));
   document.getElementById('kpi-likes').innerHTML = fmt(totalLikes) + changeBadge(getDailyChange(daily, 'total_likes'));
 
+  // 공유율 (Share Rate)
+  const shareRatesTop = posts.map(p => p.share_rate).filter(v => v != null);
+  document.getElementById('kpi-share-rate').innerHTML = fmtPct(avg(shareRatesTop)) + changeBadge(getDailyChange(daily, 'avg_share_rate'), true);
+
+  // 팔로우 전환율 (Follow Conversion Rate)
+  const totalReach = sum(posts.map(p => p.reach));
+  let followerGrowth = 0;
+  if (followers.length >= 2) {
+    followerGrowth = (followers[followers.length - 1].followers || 0) - (followers[0].followers || 0);
+  }
+  const followConvRate = totalReach > 0 ? (followerGrowth / totalReach * 100) : 0;
+  document.getElementById('kpi-follow-conv').textContent = followConvRate >= 0 ? fmtPct(followConvRate) : fmtPct(followConvRate);
+
   const top = posts.find(p => p.rank === 1);
   document.getElementById('kpi-top').textContent = top ? top.title : '-';
 
-  // Total stats with daily changes
-  document.getElementById('kpi-total-reach').innerHTML = fmt(sum(posts.map(p => p.reach))) + changeBadge(getDailyChange(daily, 'total_reach'));
-  document.getElementById('kpi-total-views').innerHTML = fmt(sum(posts.map(p => p.views))) + changeBadge(getDailyChange(daily, 'total_views'));
-  document.getElementById('kpi-total-likes').innerHTML = fmt(sum(posts.map(p => p.likes))) + changeBadge(getDailyChange(daily, 'total_likes'));
-  document.getElementById('kpi-total-saves').innerHTML = fmt(sum(posts.map(p => p.saves))) + changeBadge(getDailyChange(daily, 'total_saves'));
-  document.getElementById('kpi-total-shares').innerHTML = fmt(sum(posts.map(p => p.shares))) + changeBadge(getDailyChange(daily, 'total_shares'));
-  document.getElementById('kpi-total-comments').innerHTML = fmt(sum(posts.map(p => p.comments))) + changeBadge(getDailyChange(daily, 'total_comments'));
-  const totalEngagement = sum(posts.map(p => (p.likes || 0) + (p.saves || 0) + (p.shares || 0) + (p.comments || 0)));
-  document.getElementById('kpi-total-engagement').innerHTML = fmt(totalEngagement) + changeBadge(getDailyChange(daily, 'total_engagement'));
+  // Total/Average stats with toggle
+  const statFields = [
+    { id: 'reach', sumVal: sum(posts.map(p => p.reach)), avgVal: Math.round(avg(posts.map(p => p.reach).filter(v => v != null))), daily: 'total_reach', labelT: '전체 도달', labelA: '평균 도달' },
+    { id: 'views', sumVal: sum(posts.map(p => p.views)), avgVal: Math.round(avg(posts.map(p => p.views).filter(v => v != null))), daily: 'total_views', labelT: '전체 조회수', labelA: '평균 조회수' },
+    { id: 'likes', sumVal: sum(posts.map(p => p.likes)), avgVal: Math.round(avg(posts.map(p => p.likes).filter(v => v != null))), daily: 'total_likes', labelT: '전체 좋아요', labelA: '평균 좋아요' },
+    { id: 'saves', sumVal: sum(posts.map(p => p.saves)), avgVal: Math.round(avg(posts.map(p => p.saves).filter(v => v != null))), daily: 'total_saves', labelT: '전체 저장', labelA: '평균 저장' },
+    { id: 'shares', sumVal: sum(posts.map(p => p.shares)), avgVal: Math.round(avg(posts.map(p => p.shares).filter(v => v != null))), daily: 'total_shares', labelT: '전체 공유', labelA: '평균 공유' },
+    { id: 'comments', sumVal: sum(posts.map(p => p.comments)), avgVal: Math.round(avg(posts.map(p => p.comments).filter(v => v != null))), daily: 'total_comments', labelT: '전체 댓글', labelA: '평균 댓글' },
+    { id: 'engagement', sumVal: sum(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0))), avgVal: Math.round(avg(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0)))), daily: 'total_engagement', labelT: '전체 참여', labelA: '평균 참여' },
+  ];
+  // Store for toggle re-use
+  window._kpiStatFields = statFields;
+  window._kpiDaily = daily;
+
+  const kpiMode = document.querySelector('#kpi-mode-toggle .toggle-btn.active')?.dataset.mode || 'total';
+  renderKpiStats(kpiMode);
 
   // Follower trend chart (last 30 days from daily report or follower data)
   document.getElementById('chart-follower-trend').innerHTML = '';
@@ -260,6 +306,12 @@ function renderOverview() {
 
   const reachRate = latestFollowers ? (avg(reaches) / latestFollowers * 100) : 0;
   document.getElementById('kpi-reach-rate').textContent = fmtPct(reachRate);
+
+  // 팔로우 전환율 상세 (마케터 섹션)
+  const totalReachAll = sum(posts.map(p => p.reach));
+  const followGrowthDetail = followers.length >= 2 ? (followers[followers.length-1].followers||0) - (followers[0].followers||0) : 0;
+  const followConvDetail = totalReachAll > 0 ? (followGrowthDetail / totalReachAll * 100) : 0;
+  document.getElementById('kpi-follow-conv-detail').textContent = fmtPct(followConvDetail);
 
   // ── Carousel vs Reels comparison ──
   const typeCompare = {};

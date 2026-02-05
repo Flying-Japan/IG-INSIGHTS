@@ -214,8 +214,22 @@ body {
 .kpi-grid-4 {
   grid-template-columns: repeat(4, 1fr);
 }
+.kpi-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
 .kpi-grid-7 {
   grid-template-columns: repeat(7, 1fr);
+}
+.kpi-stats-section {
+  margin-bottom: 20px;
+}
+.kpi-stats-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.kpi-stats-section .kpi-grid {
+  margin-bottom: 0;
 }
 .kpi-card {
   background: var(--bg2);
@@ -618,6 +632,7 @@ body {
 @media (max-width: 768px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .kpi-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .kpi-grid-5 { grid-template-columns: repeat(2, 1fr); }
   .kpi-grid-7 { grid-template-columns: repeat(3, 1fr); }
   .chart-grid { grid-template-columns: 1fr; }
   .header { padding: 12px 16px; }

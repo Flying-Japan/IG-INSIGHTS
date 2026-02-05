@@ -51,7 +51,7 @@
 
     <!-- 1. Overview Tab -->
     <section id="tab-overview" class="tab-content active">
-      <div class="kpi-grid">
+      <div class="kpi-grid kpi-grid-4">
         <div class="kpi-card">
           <div class="kpi-label">총 게시물</div>
           <div class="kpi-value" id="kpi-posts">-</div>
@@ -69,6 +69,18 @@
           <div class="kpi-label">평균 도달</div>
           <div class="kpi-value" id="kpi-reach">-</div>
         </div>
+      </div>
+      <div class="kpi-grid kpi-grid-4">
+        <div class="kpi-card">
+          <div class="kpi-label">평균 공유율</div>
+          <div class="kpi-value" id="kpi-share-rate">-</div>
+          <div class="kpi-sub" style="color:var(--text2)">공유 / 도달</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">팔로우 전환율</div>
+          <div class="kpi-value" id="kpi-follow-conv">-</div>
+          <div class="kpi-sub" style="color:var(--text2)">팔로워 증가 / 도달</div>
+        </div>
         <div class="kpi-card">
           <div class="kpi-label">총 좋아요</div>
           <div class="kpi-value" id="kpi-likes">-</div>
@@ -78,34 +90,42 @@
           <div class="kpi-value kpi-value-sm" id="kpi-top">-</div>
         </div>
       </div>
-      <div class="kpi-grid kpi-grid-7">
-        <div class="kpi-card">
-          <div class="kpi-label">전체 도달</div>
-          <div class="kpi-value" id="kpi-total-reach">-</div>
+      <div class="kpi-stats-section">
+        <div class="kpi-stats-header">
+          <div class="toggle-group" id="kpi-mode-toggle">
+            <button class="toggle-btn active" data-mode="total">합계</button>
+            <button class="toggle-btn" data-mode="avg">평균</button>
+          </div>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-label">전체 조회수</div>
-          <div class="kpi-value" id="kpi-total-views">-</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">전체 좋아요</div>
-          <div class="kpi-value" id="kpi-total-likes">-</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">전체 저장</div>
-          <div class="kpi-value" id="kpi-total-saves">-</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">전체 공유</div>
-          <div class="kpi-value" id="kpi-total-shares">-</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">전체 댓글</div>
-          <div class="kpi-value" id="kpi-total-comments">-</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">전체 참여</div>
-          <div class="kpi-value" id="kpi-total-engagement">-</div>
+        <div class="kpi-grid kpi-grid-7">
+          <div class="kpi-card">
+            <div class="kpi-label" id="kpi-stat-reach-label">전체 도달</div>
+            <div class="kpi-value" id="kpi-total-reach">-</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label" id="kpi-stat-views-label">전체 조회수</div>
+            <div class="kpi-value" id="kpi-total-views">-</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label" id="kpi-stat-likes-label">전체 좋아요</div>
+            <div class="kpi-value" id="kpi-total-likes">-</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label" id="kpi-stat-saves-label">전체 저장</div>
+            <div class="kpi-value" id="kpi-total-saves">-</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label" id="kpi-stat-shares-label">전체 공유</div>
+            <div class="kpi-value" id="kpi-total-shares">-</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label" id="kpi-stat-comments-label">전체 댓글</div>
+            <div class="kpi-value" id="kpi-total-comments">-</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label" id="kpi-stat-engagement-label">전체 참여</div>
+            <div class="kpi-value" id="kpi-total-engagement">-</div>
+          </div>
         </div>
       </div>
       <div class="chart-grid">
@@ -134,7 +154,7 @@
         </div>
       </div>
       <!-- 마케터 분석 섹션 -->
-      <div class="kpi-grid kpi-grid-4">
+      <div class="kpi-grid kpi-grid-5">
         <div class="kpi-card">
           <div class="kpi-label">평균 저장율</div>
           <div class="kpi-value" id="kpi-avg-save-rate">-</div>
@@ -153,6 +173,11 @@
           <div class="kpi-label">팔로워 대비 도달율</div>
           <div class="kpi-value" id="kpi-reach-rate">-</div>
           <div class="kpi-sub" style="color:var(--text2)">평균 도달 / 팔로워</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">팔로우 전환율</div>
+          <div class="kpi-value" id="kpi-follow-conv-detail">-</div>
+          <div class="kpi-sub" style="color:var(--text2)">팔로워 증가 / 총 도달</div>
         </div>
       </div>
       <div class="chart-grid">
