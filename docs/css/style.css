@@ -522,6 +522,91 @@ body {
   border-color: var(--accent3);
 }
 
+/* ── Contribution Section ── */
+.contribution-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.section-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+.section-sub {
+  font-size: 12px;
+  color: var(--text2);
+}
+.contribution-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.contrib-row {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+.contrib-row-top {
+  gap: 32px;
+  margin-bottom: 4px;
+}
+.contrib-row-rest {
+  gap: 20px;
+}
+.contrib-item {
+  text-align: center;
+  flex: 0 0 auto;
+}
+.contrib-highlight {
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+}
+.contrib-chart {
+  position: relative;
+  margin: 0 auto 6px;
+}
+.contrib-label {
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.contrib-highlight .contrib-label {
+  font-size: 14px;
+  color: var(--text);
+}
+.contrib-detail {
+  font-size: 11px;
+  color: var(--text2);
+  opacity: 0.7;
+}
+.contrib-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 10px;
+  margin-top: 6px;
+  letter-spacing: 0.5px;
+}
+.contrib-badge.top {
+  background: rgba(0, 200, 83, 0.15);
+  color: var(--green);
+}
+
 /* ── Column Toggle ── */
 .col-toggle-btn {
   background: var(--bg3);
@@ -692,6 +777,8 @@ body {
   .header { padding: 12px 16px; }
   .container { padding: 12px 16px; }
   .tab-btn { padding: 10px 14px; font-size: 13px; }
+  .contrib-row { flex-wrap: wrap; }
+  .contrib-row-top { gap: 12px; }
   .milestone-bar { flex-wrap: wrap; padding: 8px 16px; gap: 8px; }
   .milestone-btn { padding: 5px 10px; font-size: 11px; }
   .milestone-date { font-size: 10px; }

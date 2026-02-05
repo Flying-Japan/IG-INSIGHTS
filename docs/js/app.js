@@ -196,6 +196,109 @@ document.getElementById('kpi-mode-toggle')?.addEventListener('click', e => {
 // ══════════════════════════════════════════════════
 // TAB 1: Overview
 // ══════════════════════════════════════════════════
+function renderContribution() {
+  const allPosts = DATA.posts;
+  const afterPosts = allPosts.filter(p => {
+    const d = parseUploadDate(p.upload_date);
+    return d && d >= MILESTONE_DATE;
+  });
+
+  const metrics = [
+    { key: 'comments', label: '댓글', color: '#ffd600' },
+    { key: 'follows', label: '팔로우', color: '#E040FB' },
+    { key: 'shares', label: '공유', color: '#F77737' },
+    { key: 'saves', label: '저장', color: '#00c853' },
+    { key: 'reach', label: '도달', color: '#448aff' },
+    { key: 'likes', label: '좋아요', color: '#ff5252' },
+    { key: 'views', label: '조회수', color: '#7c4dff' },
+  ];
+
+  const container = document.getElementById('contribution-grid');
+  if (!container) return;
+  container.innerHTML = '';
+
+  // 기여도 계산
+  const contribData = metrics.map(m => {
+    const totalAll = sum(allPosts.map(p => p[m.key] || 0));
+    const totalAfter = sum(afterPosts.map(p => p[m.key] || 0));
+    const pct = totalAll > 0 ? (totalAfter / totalAll * 100) : 0;
+    return { ...m, totalAll, totalAfter, pct };
+  });
+
+  // 상위 3개 강조
+  const sortedByPct = [...contribData].sort((a, b) => b.pct - a.pct);
+  const top3Keys = new Set(sortedByPct.slice(0, 3).map(d => d.key));
+
+  // 상위 그룹(top3)과 나머지 그룹 분리
+  const topGroup = contribData.filter(d => top3Keys.has(d.key)).sort((a, b) => b.pct - a.pct);
+  const restGroup = contribData.filter(d => !top3Keys.has(d.key));
+
+  // 상위 3개 큰 도넛
+  const topRow = document.createElement('div');
+  topRow.className = 'contrib-row contrib-row-top';
+  container.appendChild(topRow);
+
+  // 나머지 작은 도넛
+  const restRow = document.createElement('div');
+  restRow.className = 'contrib-row contrib-row-rest';
+  container.appendChild(restRow);
+
+  function renderDonut(d, parentEl, isTop) {
+    const item = document.createElement('div');
+    item.className = 'contrib-item' + (isTop ? ' contrib-highlight' : '');
+    const chartId = `contrib-chart-${d.key}`;
+    const rankIdx = sortedByPct.findIndex(s => s.key === d.key) + 1;
+    const rankBadge = isTop ? `<span class="contrib-badge top">${rankIdx}위</span>` : '';
+
+    item.innerHTML = `
+      <div class="contrib-label">${d.label}</div>
+      <div class="contrib-chart" id="${chartId}"></div>
+      <div class="contrib-detail">${fmt(d.totalAfter)} / ${fmt(d.totalAll)}</div>
+      ${rankBadge}
+    `;
+    parentEl.appendChild(item);
+
+    const afterPct = +d.pct.toFixed(1);
+    const beforePct = +(100 - afterPct).toFixed(1);
+    const chartH = isTop ? 160 : 120;
+    const fontSize = isTop ? '22px' : '16px';
+
+    trackChart(new ApexCharts(document.getElementById(chartId), {
+      series: [afterPct, beforePct],
+      chart: { type: 'donut', height: chartH, sparkline: { enabled: true } },
+      labels: ['담당 이후', '담당 이전'],
+      colors: [d.color, 'rgba(46,50,71,0.4)'],
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '72%',
+            labels: {
+              show: true,
+              name: { show: false },
+              value: { show: true, fontSize, fontWeight: 700,
+                color: isTop ? d.color : '#e4e6f0',
+                formatter: () => afterPct + '%'
+              },
+              total: { show: true, showAlways: true,
+                fontSize, fontWeight: 700,
+                color: isTop ? d.color : '#e4e6f0',
+                formatter: () => afterPct + '%'
+              }
+            }
+          }
+        }
+      },
+      stroke: { show: false },
+      tooltip: { enabled: true, theme: 'dark', y: { formatter: v => v + '%' } },
+      legend: { show: false },
+      states: { hover: { filter: { type: 'none' } }, active: { filter: { type: 'none' } } }
+    })).render();
+  }
+
+  topGroup.forEach(d => renderDonut(d, topRow, true));
+  restGroup.forEach(d => renderDonut(d, restRow, false));
+}
+
 function renderOverview() {
   const posts = filterByMilestone(DATA.posts);
   const followers = filterFollowersByMilestone(DATA.followers);
@@ -306,6 +409,9 @@ function renderOverview() {
 
   const reachRate = latestFollowers ? (avg(reaches) / latestFollowers * 100) : 0;
   document.getElementById('kpi-reach-rate').textContent = fmtPct(reachRate);
+
+  // ── Contribution Analysis (운영 기여도) ──
+  renderContribution();
 
   // ── Carousel vs Reels comparison ──
   const typeCompare = {};
