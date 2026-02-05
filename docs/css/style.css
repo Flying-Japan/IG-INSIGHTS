@@ -211,6 +211,9 @@ body {
   gap: 12px;
   margin-bottom: 20px;
 }
+.kpi-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
 .kpi-grid-4 {
   grid-template-columns: repeat(4, 1fr);
 }
@@ -519,6 +522,56 @@ body {
   border-color: var(--accent3);
 }
 
+/* ── Column Toggle ── */
+.col-toggle-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.col-toggle-btn:hover {
+  border-color: var(--accent3);
+  color: var(--text);
+}
+.col-toggle-btn.active {
+  border-color: var(--accent3);
+  color: var(--accent3);
+}
+.col-toggle-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+.col-toggle-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.col-toggle-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px 0;
+  white-space: nowrap;
+}
+.col-toggle-list input[type="checkbox"] {
+  accent-color: var(--accent3);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
 /* ── Insight Box ── */
 .insight-box {
   background: linear-gradient(135deg, rgba(131,58,180,0.1), rgba(247,119,55,0.1));
@@ -631,6 +684,7 @@ body {
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .kpi-grid-3 { grid-template-columns: repeat(2, 1fr); }
   .kpi-grid-4 { grid-template-columns: repeat(2, 1fr); }
   .kpi-grid-5 { grid-template-columns: repeat(2, 1fr); }
   .kpi-grid-7 { grid-template-columns: repeat(3, 1fr); }

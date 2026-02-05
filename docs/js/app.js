@@ -225,15 +225,6 @@ function renderOverview() {
   const shareRatesTop = posts.map(p => p.share_rate).filter(v => v != null);
   document.getElementById('kpi-share-rate').innerHTML = fmtPct(avg(shareRatesTop)) + changeBadge(getDailyChange(daily, 'avg_share_rate'), true);
 
-  // 팔로우 전환율 (Follow Conversion Rate)
-  const totalReach = sum(posts.map(p => p.reach));
-  let followerGrowth = 0;
-  if (followers.length >= 2) {
-    followerGrowth = (followers[followers.length - 1].followers || 0) - (followers[0].followers || 0);
-  }
-  const followConvRate = totalReach > 0 ? (followerGrowth / totalReach * 100) : 0;
-  document.getElementById('kpi-follow-conv').textContent = followConvRate >= 0 ? fmtPct(followConvRate) : fmtPct(followConvRate);
-
   const top = posts.find(p => p.rank === 1);
   document.getElementById('kpi-top').textContent = top ? top.title : '-';
 
@@ -306,12 +297,6 @@ function renderOverview() {
 
   const reachRate = latestFollowers ? (avg(reaches) / latestFollowers * 100) : 0;
   document.getElementById('kpi-reach-rate').textContent = fmtPct(reachRate);
-
-  // 팔로우 전환율 상세 (마케터 섹션)
-  const totalReachAll = sum(posts.map(p => p.reach));
-  const followGrowthDetail = followers.length >= 2 ? (followers[followers.length-1].followers||0) - (followers[0].followers||0) : 0;
-  const followConvDetail = totalReachAll > 0 ? (followGrowthDetail / totalReachAll * 100) : 0;
-  document.getElementById('kpi-follow-conv-detail').textContent = fmtPct(followConvDetail);
 
   // ── Carousel vs Reels comparison ──
   const typeCompare = {};
@@ -429,20 +414,69 @@ const colDef = {
 // Default column order
 const defaultOrder = ['rank','upload_date','media_type','category','title','reach','views','likes','saves','shares','comments','engagement_rate','composite_score'];
 
+// Column toggle (visible columns)
+const colLabels = {
+  rank: '순위', upload_date: '업로드일', media_type: '유형', category: '카테고리',
+  title: '제목', reach: '도달', views: '조회수', likes: '좋아요',
+  saves: '저장', shares: '공유', comments: '댓글',
+  engagement_rate: '참여율', composite_score: '점수',
+};
+// title is always visible (non-toggleable)
+let visibleColumns = new Set(defaultOrder);
+
 // Build columns with the sort-target field moved right after title
 function buildColumns(sortField) {
-  const order = [...defaultOrder];
+  let order = [...defaultOrder].filter(key => visibleColumns.has(key));
   const metricsFields = ['reach','views','likes','saves','shares','comments','engagement_rate'];
-  if (metricsFields.includes(sortField)) {
+  if (metricsFields.includes(sortField) && order.includes(sortField)) {
     const idx = order.indexOf(sortField);
     const titleIdx = order.indexOf('title');
-    if (idx > titleIdx + 1) {
+    if (titleIdx >= 0 && idx > titleIdx + 1) {
       order.splice(idx, 1);
-      order.splice(titleIdx + 1, 0, sortField); // right after title
+      order.splice(titleIdx + 1, 0, sortField);
     }
   }
   return order.map(key => colDef[key]());
 }
+
+// Column toggle UI
+function renderColumnToggle() {
+  const container = document.getElementById('col-toggle-list');
+  if (!container) return;
+  container.innerHTML = '';
+  defaultOrder.forEach(key => {
+    if (key === 'title') return; // title은 항상 표시
+    const label = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = visibleColumns.has(key);
+    cb.dataset.col = key;
+    cb.addEventListener('change', () => {
+      if (cb.checked) visibleColumns.add(key);
+      else visibleColumns.delete(key);
+      if (postTable) {
+        postTable.setColumns(buildColumns(currentSortField));
+      }
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(colLabels[key] || key));
+    container.appendChild(label);
+  });
+}
+
+// Toggle panel show/hide
+document.getElementById('col-toggle-btn')?.addEventListener('click', () => {
+  const panel = document.getElementById('col-toggle-panel');
+  const btn = document.getElementById('col-toggle-btn');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    btn.classList.add('active');
+    renderColumnToggle();
+  } else {
+    panel.style.display = 'none';
+    btn.classList.remove('active');
+  }
+});
 
 // Recalculate rank based on sort field
 function recalcRankedData(posts, sortField, sortDir) {
