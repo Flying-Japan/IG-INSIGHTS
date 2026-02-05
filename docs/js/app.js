@@ -214,7 +214,7 @@ async function init() {
     });
 
     DATA = { posts, followers, daily, meta, postsYesterday };
-    document.getElementById('update-time').textContent = '데이터 기준: ' + meta.updated_at_ko;
+    document.getElementById('update-time').textContent = meta.updated_at_ko;
     document.getElementById('loading').classList.add('hidden');
 
     setupTabs();
