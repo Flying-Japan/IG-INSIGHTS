@@ -44,49 +44,69 @@ function calcFollowerChanges(followers) {
   const latestVal = latest.followers || 0;
   if (!latestDate) return null;
 
-  function findClosest(targetDate) {
-    let best = null; let bestDiff = Infinity;
+  // 목표 날짜 이전(또는 같은 날)에서 가장 가까운 항목 찾기
+  function findOnOrBefore(targetDate) {
+    let best = null; let bestDate = null;
     for (let i = followers.length - 2; i >= 0; i--) {
       const d = parseUploadDate(followers[i].date);
-      if (!d) continue;
-      const diff = Math.abs(d - targetDate);
-      if (diff < bestDiff) { bestDiff = diff; best = followers[i]; }
+      if (!d || d > targetDate) continue;
+      if (!bestDate || d > bestDate) { best = followers[i]; bestDate = d; }
     }
-    // 허용 범위: 목표일 ±3일 이내
-    if (best && bestDiff <= 3 * 86400000) return best;
-    return null;
+    return best ? { entry: best, date: bestDate } : null;
+  }
+
+  // 가장 오래된 데이터 (최초 기록)
+  const firstEntry = followers[0];
+  const firstDate = parseUploadDate(firstEntry.date);
+  const firstVal = firstEntry.followers || 0;
+
+  function makeResult(ref, label) {
+    if (!ref) return { available: false };
+    const rv = ref.entry.followers || 0;
+    const days = Math.round((latestDate - ref.date) / 86400000);
+    return { change: latestVal - rv, pct: rv ? ((latestVal - rv) / rv * 100) : 0, days, available: true };
   }
 
   const results = {};
-  // 전일 대비
-  const prev = followers[followers.length - 2];
+
+  // 전일: 어제(또는 가장 최근 이전 기록)
+  const prev = followers.length >= 2 ? followers[followers.length - 2] : null;
   if (prev) {
     const pv = prev.followers || 0;
-    results.daily = { change: latestVal - pv, pct: pv ? ((latestVal - pv) / pv * 100) : 0, available: true };
+    const pd = parseUploadDate(prev.date);
+    const days = pd ? Math.round((latestDate - pd) / 86400000) : 1;
+    results.daily = { change: latestVal - pv, pct: pv ? ((latestVal - pv) / pv * 100) : 0, days, available: true };
   } else { results.daily = { available: false }; }
 
-  // 전주 대비 (7일 전)
+  // 전주: 7일 전 기준
   const weekAgo = new Date(latestDate); weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekEntry = findClosest(weekAgo);
-  if (weekEntry) {
-    const wv = weekEntry.followers || 0;
-    results.weekly = { change: latestVal - wv, pct: wv ? ((latestVal - wv) / wv * 100) : 0, available: true };
+  const weekRef = findOnOrBefore(weekAgo);
+  if (weekRef) {
+    results.weekly = makeResult(weekRef);
+  } else if (firstDate && firstDate < latestDate) {
+    // 7일 전 데이터 없으면 최초 기록 사용
+    const days = Math.round((latestDate - firstDate) / 86400000);
+    results.weekly = { change: latestVal - firstVal, pct: firstVal ? ((latestVal - firstVal) / firstVal * 100) : 0, days, available: true, approx: true };
   } else { results.weekly = { available: false }; }
 
-  // 전월 대비 (30일 전)
+  // 전월: 1달 전 기준
   const monthAgo = new Date(latestDate); monthAgo.setMonth(monthAgo.getMonth() - 1);
-  const monthEntry = findClosest(monthAgo);
-  if (monthEntry) {
-    const mv = monthEntry.followers || 0;
-    results.monthly = { change: latestVal - mv, pct: mv ? ((latestVal - mv) / mv * 100) : 0, available: true };
+  const monthRef = findOnOrBefore(monthAgo);
+  if (monthRef) {
+    results.monthly = makeResult(monthRef);
+  } else if (firstDate && firstDate < latestDate) {
+    const days = Math.round((latestDate - firstDate) / 86400000);
+    results.monthly = { change: latestVal - firstVal, pct: firstVal ? ((latestVal - firstVal) / firstVal * 100) : 0, days, available: true, approx: true };
   } else { results.monthly = { available: false }; }
 
-  // 전년 대비 (365일 전)
+  // 전년: 1년 전 기준
   const yearAgo = new Date(latestDate); yearAgo.setFullYear(yearAgo.getFullYear() - 1);
-  const yearEntry = findClosest(yearAgo);
-  if (yearEntry) {
-    const yv = yearEntry.followers || 0;
-    results.yearly = { change: latestVal - yv, pct: yv ? ((latestVal - yv) / yv * 100) : 0, available: true };
+  const yearRef = findOnOrBefore(yearAgo);
+  if (yearRef) {
+    results.yearly = makeResult(yearRef);
+  } else if (firstDate && firstDate < latestDate) {
+    const days = Math.round((latestDate - firstDate) / 86400000);
+    results.yearly = { change: latestVal - firstVal, pct: firstVal ? ((latestVal - firstVal) / firstVal * 100) : 0, days, available: true, approx: true };
   } else { results.yearly = { available: false }; }
 
   results.current = latestVal;
@@ -97,7 +117,8 @@ function followerChangeBadge(label, data) {
   if (!data || !data.available) return `<span class="fc-item fc-na"><span class="fc-label">${label}</span><span class="fc-val">—</span></span>`;
   const sign = data.change >= 0 ? '+' : '';
   const cls = data.change >= 0 ? 'positive' : 'negative';
-  return `<span class="fc-item ${cls}"><span class="fc-label">${label}</span><span class="fc-val">${sign}${fmt(data.change)}</span><span class="fc-pct">(${sign}${data.pct.toFixed(1)}%)</span></span>`;
+  const daysNote = data.approx ? `<span class="fc-days">${data.days}일간</span>` : '';
+  return `<span class="fc-item ${cls}"><span class="fc-label">${label}</span><span class="fc-val">${sign}${fmt(data.change)}</span><span class="fc-pct">(${sign}${data.pct.toFixed(1)}%)</span>${daysNote}</span>`;
 }
 
 // ── 팔로워 상단 배너 ──

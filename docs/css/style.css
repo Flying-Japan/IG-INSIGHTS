@@ -1141,6 +1141,11 @@ body {
   font-size: 10px;
   opacity: 0.7;
 }
+.fc-days {
+  font-size: 9px;
+  opacity: 0.6;
+  margin-left: 2px;
+}
 .fb-date {
   margin-left: auto;
   font-size: 11px;
