@@ -97,6 +97,15 @@ async function init() {
       });
     });
 
+    // 팔로우 전환율 계산 (follows / reach × 100)
+    posts.forEach(p => {
+      p.follow_rate = (p.follows != null && p.reach) ? +(p.follows / p.reach * 100).toFixed(2) : null;
+    });
+    // postsYesterday에도 동일 적용
+    postsYesterday.forEach(p => {
+      p.follow_rate = (p.follows != null && p.reach) ? +(p.follows / p.reach * 100).toFixed(2) : null;
+    });
+
     DATA = { posts, followers, daily, meta, postsYesterday };
     document.getElementById('update-time').textContent = '업데이트: ' + meta.updated_at_ko;
     document.getElementById('loading').classList.add('hidden');
@@ -407,18 +416,28 @@ const colDef = {
       }
       return `<span style="color:${color}">${v.toFixed(1)}%</span>${changeHtml}`;
     }}),
+  follows:    () => ({ title: '팔로우', field: 'follows', width: 80, hozAlign: 'right', sorter: 'number',
+    formatter: cell => fmtWithChange(cell.getValue(), 'follows', cell.getRow().getData()) }),
+  follow_rate: () => ({ title: '팔로우 전환율', field: 'follow_rate', width: 105, hozAlign: 'right', sorter: 'number',
+    formatter: cell => {
+      const v = cell.getValue();
+      if (v == null) return '-';
+      const color = v >= 1 ? '#00c853' : v >= 0.3 ? '#ffd600' : '#9499b3';
+      return `<span style="color:${color}">${v.toFixed(2)}%</span>`;
+    }}),
   composite_score: () => ({ title: '점수', field: 'composite_score', width: 65, hozAlign: 'right', sorter: 'number',
     formatter: cell => { const v = cell.getValue(); return v != null ? v.toFixed(1) : '-'; }}),
 };
 
 // Default column order
-const defaultOrder = ['rank','upload_date','media_type','category','title','reach','views','likes','saves','shares','comments','engagement_rate','composite_score'];
+const defaultOrder = ['rank','upload_date','media_type','category','title','reach','views','likes','saves','shares','comments','follows','follow_rate','engagement_rate','composite_score'];
 
 // Column toggle (visible columns)
 const colLabels = {
   rank: '순위', upload_date: '업로드일', media_type: '유형', category: '카테고리',
   title: '제목', reach: '도달', views: '조회수', likes: '좋아요',
   saves: '저장', shares: '공유', comments: '댓글',
+  follows: '팔로우', follow_rate: '팔로우 전환율',
   engagement_rate: '참여율', composite_score: '점수',
 };
 // title is always visible (non-toggleable)
@@ -427,7 +446,7 @@ let visibleColumns = new Set(defaultOrder);
 // Build columns with the sort-target field moved right after title
 function buildColumns(sortField) {
   let order = [...defaultOrder].filter(key => visibleColumns.has(key));
-  const metricsFields = ['reach','views','likes','saves','shares','comments','engagement_rate'];
+  const metricsFields = ['reach','views','likes','saves','shares','comments','follows','follow_rate','engagement_rate'];
   if (metricsFields.includes(sortField) && order.includes(sortField)) {
     const idx = order.indexOf(sortField);
     const titleIdx = order.indexOf('title');
