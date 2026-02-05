@@ -2,6 +2,14 @@
 
 // ── Utilities ──
 const fmt = n => n == null ? '-' : n.toLocaleString('ko-KR');
+const fmtCompact = n => {
+  if (n == null) return '-';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (abs >= 10_000) return (n / 1_000).toFixed(0) + 'K';
+  if (abs >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return n.toLocaleString('ko-KR');
+};
 const fmtPct = n => n == null ? '-' : n.toFixed(1) + '%';
 const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 const sum = arr => arr.reduce((a, b) => a + (b || 0), 0);
@@ -513,11 +521,12 @@ function renderKpiStats(mode, periodPosts) {
       return;
     }
     if (valueEl) {
-      const formatted = f.isPct ? fmtPct(f.val) : fmt(f.val);
+      const formatted = f.isPct ? fmtPct(f.val) : fmtCompact(f.val);
+      const fullNum = f.isPct ? fmtPct(f.val) : fmt(f.val);
       const showChange = isTotal && f.daily;
       const bm = statBenchmarks[f.id];
       const grade = getGrade(bm, f.val);
-      valueEl.innerHTML = formatted + gradeBadgeHtml(grade) + (showChange ? changeBadge(getDailyChange(daily, f.daily), f.isPct) : '');
+      valueEl.innerHTML = `<span title="${fullNum}">${formatted}</span>` + gradeBadgeHtml(grade) + (showChange ? changeBadge(getDailyChange(daily, f.daily), f.isPct) : '');
     }
   });
 }
@@ -973,6 +982,7 @@ function renderOverview() {
 // ══════════════════════════════════════════════════
 let postTable = null;
 let currentSortField = 'rank';
+let userColumnOrder = null; // 사용자가 드래그로 변경한 칼럼 순서 저장
 let yesterdayMap = new Map();
 
 // Build yesterday lookup map
@@ -984,18 +994,18 @@ function buildYesterdayMap() {
   });
 }
 
-// Format cell with change
+// Format cell with change (compact numbers with tooltip)
 function fmtWithChange(value, field, row) {
   if (value == null) return '-';
   const key = row.url || row.title;
   const prev = yesterdayMap.get(key);
-  let html = fmt(value);
+  let html = `<span title="${fmt(value)}">${fmtCompact(value)}</span>`;
   if (prev && prev[field] != null) {
     const diff = value - prev[field];
     if (diff !== 0) {
       const sign = diff > 0 ? '+' : '';
       const cls = diff > 0 ? 'positive' : 'negative';
-      html += ` <span class="cell-change ${cls}">(${sign}${fmt(diff)})</span>`;
+      html += ` <span class="cell-change ${cls}">(${sign}${fmtCompact(diff)})</span>`;
     }
   }
   return html;
@@ -1070,19 +1080,41 @@ const colLabels = {
 // title is always visible (non-toggleable)
 let visibleColumns = new Set(defaultOrder);
 
-// Build columns with the sort-target field moved right after title
+// Build columns respecting user's drag order
 function buildColumns(sortField) {
-  let order = [...defaultOrder].filter(key => visibleColumns.has(key));
-  const metricsFields = ['reach','views','likes','saves','shares','comments','follows','follow_rate','engagement_rate'];
-  if (metricsFields.includes(sortField) && order.includes(sortField)) {
-    const idx = order.indexOf(sortField);
-    const titleIdx = order.indexOf('title');
-    if (titleIdx >= 0 && idx > titleIdx + 1) {
-      order.splice(idx, 1);
-      order.splice(titleIdx + 1, 0, sortField);
+  // 사용자가 드래그로 순서를 변경한 경우 그 순서 사용
+  let order;
+  if (userColumnOrder) {
+    order = userColumnOrder.filter(key => visibleColumns.has(key));
+    // 새로 추가된 칼럼이 있으면 끝에 추가
+    visibleColumns.forEach(key => {
+      if (!order.includes(key)) order.push(key);
+    });
+  } else {
+    order = [...defaultOrder].filter(key => visibleColumns.has(key));
+    const metricsFields = ['reach','views','likes','saves','shares','comments','follows','follow_rate','engagement_rate'];
+    if (metricsFields.includes(sortField) && order.includes(sortField)) {
+      const idx = order.indexOf(sortField);
+      const titleIdx = order.indexOf('title');
+      if (titleIdx >= 0 && idx > titleIdx + 1) {
+        order.splice(idx, 1);
+        order.splice(titleIdx + 1, 0, sortField);
+      }
     }
   }
   return order.map(key => colDef[key]());
+}
+
+// 현재 테이블에서 칼럼 순서 저장
+function saveColumnOrder() {
+  if (!postTable) return;
+  const cols = postTable.getColumns();
+  userColumnOrder = cols.map(col => {
+    const field = col.getField();
+    // field → key 매핑 (_rank → rank)
+    if (field === '_rank') return 'rank';
+    return field;
+  }).filter(key => key && defaultOrder.includes(key));
 }
 
 // Column toggle UI
@@ -1098,6 +1130,8 @@ function renderColumnToggle() {
     cb.checked = visibleColumns.has(key);
     cb.dataset.col = key;
     cb.addEventListener('change', () => {
+      // 칼럼 토글 전 현재 순서 저장
+      saveColumnOrder();
       if (cb.checked) visibleColumns.add(key);
       else visibleColumns.delete(key);
       if (postTable) {
@@ -1408,6 +1442,11 @@ function renderPostTable() {
     columns: buildColumns('rank'),
   });
 
+  // 칼럼 드래그 이동 시 순서 저장
+  postTable.on('columnMoved', () => {
+    saveColumnOrder();
+  });
+
   // Row click → diagnosis modal
   postTable.on('rowClick', (e, row) => {
     if (e.target.tagName === 'A') return;
@@ -1421,8 +1460,13 @@ function renderPostTable() {
       const [field, dir] = this.value.split('|');
       currentSortField = field;
       const rankedData = recalcRankedData(filterByMilestone(DATA.posts), field, dir);
-      postTable.setColumns(buildColumns(field));
-      postTable.replaceData(rankedData);
+      // 칼럼 순서 유지하면서 데이터만 교체
+      if (userColumnOrder) {
+        postTable.replaceData(rankedData);
+      } else {
+        postTable.setColumns(buildColumns(field));
+        postTable.replaceData(rankedData);
+      }
       applyFilters();
     });
     document.getElementById('filter-category').addEventListener('change', applyFilters);
@@ -1604,11 +1648,11 @@ function renderCategory() {
       { title: '평균 참여율', field: 'avgEngagement', width: 100, hozAlign: 'right', sorter: 'number',
         formatter: cell => cell.getValue().toFixed(1) + '%' },
       { title: '평균 도달', field: 'avgReach', width: 100, hozAlign: 'right', sorter: 'number',
-        formatter: cell => fmt(Math.round(cell.getValue())) },
+        formatter: cell => { const v = Math.round(cell.getValue()); return `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
       { title: '평균 저장', field: 'avgSaves', width: 80, hozAlign: 'right', sorter: 'number',
-        formatter: cell => fmt(Math.round(cell.getValue())) },
+        formatter: cell => { const v = Math.round(cell.getValue()); return `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
       { title: '평균 공유', field: 'avgShares', width: 80, hozAlign: 'right', sorter: 'number',
-        formatter: cell => fmt(Math.round(cell.getValue())) },
+        formatter: cell => { const v = Math.round(cell.getValue()); return `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
       { title: '평균 종합점수', field: 'avgScore', width: 100, hozAlign: 'right', sorter: 'number',
         formatter: cell => cell.getValue().toFixed(1) },
     ],
@@ -2136,10 +2180,10 @@ function renderContent() {
           const row = cell.getRow().getData();
           return row.url ? `<a href="${row.url}" target="_blank" style="color:#F77737;text-decoration:none">${cell.getValue()}</a>` : cell.getValue();
         }},
-      { title: '도달', field: 'reach', width: 80, hozAlign: 'right', sorter: 'number', formatter: cell => fmt(cell.getValue()) },
+      { title: '도달', field: 'reach', width: 80, hozAlign: 'right', sorter: 'number', formatter: cell => { const v = cell.getValue(); return v == null ? '-' : `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
       { title: '참여율', field: 'engagement_rate', width: 70, hozAlign: 'right', formatter: cell => fmtPct(cell.getValue()) },
-      { title: '저장', field: 'saves', width: 60, hozAlign: 'right', formatter: cell => fmt(cell.getValue()) },
-      { title: '공유', field: 'shares', width: 60, hozAlign: 'right', formatter: cell => fmt(cell.getValue()) },
+      { title: '저장', field: 'saves', width: 60, hozAlign: 'right', formatter: cell => { const v = cell.getValue(); return v == null ? '-' : `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
+      { title: '공유', field: 'shares', width: 60, hozAlign: 'right', formatter: cell => { const v = cell.getValue(); return v == null ? '-' : `<span title="${fmt(v)}">${fmtCompact(v)}</span>`; } },
       { title: '점수', field: 'composite_score', width: 60, hozAlign: 'right', formatter: cell => cell.getValue()?.toFixed(1) || '-' },
     ],
   });
