@@ -1404,6 +1404,7 @@ function renderPostTable() {
     height: '600px',
     pagination: false,
     movableColumns: true,
+    columnDefaults: { headerSortClickElement: 'icon' },
     columns: buildColumns('rank'),
   });
 
@@ -1596,6 +1597,7 @@ function renderCategory() {
     data: catStats,
     layout: 'fitColumns',
     movableColumns: true,
+    columnDefaults: { headerSortClickElement: 'icon' },
     columns: [
       { title: '카테고리', field: 'category', width: 100 },
       { title: '게시물 수', field: 'count', width: 80, hozAlign: 'right', sorter: 'number' },
@@ -2124,6 +2126,7 @@ function renderContent() {
     data: top10,
     layout: 'fitColumns',
     movableColumns: true,
+    columnDefaults: { headerSortClickElement: 'icon' },
     columns: [
       { title: '순위', field: 'rank', width: 55, hozAlign: 'center', sorter: 'number' },
       { title: '유형', field: 'media_type', width: 70, hozAlign: 'center', formatter: cell => typeLabel(cell.getValue()) },
