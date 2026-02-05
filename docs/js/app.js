@@ -109,13 +109,17 @@ function renderFollowerBanner() {
   if (!changes) { banner.style.display = 'none'; return; }
 
   banner.style.display = '';
+  const lastEntry = followers[followers.length - 1];
+  const dataDate = lastEntry ? lastEntry.date.replace(/\(.\)/, '') : '';
+  const metaTime = DATA.meta && DATA.meta.updated_at_ko ? DATA.meta.updated_at_ko : '';
   banner.innerHTML =
     `<span class="fb-current">👥 팔로워 <strong>${fmt(changes.current)}</strong></span>` +
     `<span class="fb-divider">|</span>` +
     followerChangeBadge('전일', changes.daily) +
     followerChangeBadge('전주', changes.weekly) +
     followerChangeBadge('전월', changes.monthly) +
-    followerChangeBadge('전년', changes.yearly);
+    followerChangeBadge('전년', changes.yearly) +
+    `<span class="fb-date">기준: ${metaTime || dataDate}</span>`;
 }
 
 // ── Milestone Filter ──
