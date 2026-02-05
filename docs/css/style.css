@@ -229,10 +229,17 @@ body {
 .kpi-stats-header {
   display: flex;
   align-items: center;
+  gap: 10px;
   margin-bottom: 8px;
 }
 .kpi-stats-section .kpi-grid {
   margin-bottom: 0;
+}
+.kpi-stats-grid {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+}
+.kpi-stats-grid .kpi-card[style*="display: none"] + .kpi-card {
+  /* handled by JS display toggle */
 }
 .kpi-card {
   background: var(--bg2);

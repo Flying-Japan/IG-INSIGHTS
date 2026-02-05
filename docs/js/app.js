@@ -168,19 +168,53 @@ function renderAll() {
 }
 
 // ── KPI Stats (Total/Avg toggle) ──
+const statIds = ['reach','views','likes','saves','shares','comments','engagement','share_rate','follows'];
+const statLabels = {
+  reach: '도달', views: '조회수', likes: '좋아요', saves: '저장',
+  shares: '공유', comments: '댓글', engagement: '참여',
+  share_rate: '공유율', follows: '팔로우',
+};
+let visibleStats = new Set(statIds);
+
 function renderKpiStats(mode) {
   const statFields = window._kpiStatFields;
   const daily = window._kpiDaily;
   if (!statFields) return;
   const isAvg = mode === 'avg';
   statFields.forEach(f => {
+    const card = document.querySelector(`#kpi-stats-grid .kpi-card[data-stat="${f.id}"]`);
     const labelEl = document.getElementById(`kpi-stat-${f.id}-label`);
     const valueEl = document.getElementById(`kpi-total-${f.id}`);
+    // Visibility
+    if (card) card.style.display = visibleStats.has(f.id) ? '' : 'none';
     if (labelEl) labelEl.textContent = isAvg ? f.labelA : f.labelT;
     if (valueEl) {
       const val = isAvg ? f.avgVal : f.sumVal;
-      valueEl.innerHTML = fmt(val) + (isAvg ? '' : changeBadge(getDailyChange(daily, f.daily)));
+      const formatted = f.isPct ? fmtPct(val) : fmt(val);
+      valueEl.innerHTML = formatted + (isAvg ? '' : changeBadge(getDailyChange(daily, f.daily), f.isPct));
     }
+  });
+}
+
+// Stats column toggle UI
+function renderStatsToggle() {
+  const container = document.getElementById('stats-toggle-list');
+  if (!container) return;
+  container.innerHTML = '';
+  statIds.forEach(id => {
+    const label = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = visibleStats.has(id);
+    cb.addEventListener('change', () => {
+      if (cb.checked) visibleStats.add(id);
+      else visibleStats.delete(id);
+      const mode = document.querySelector('#kpi-mode-toggle .toggle-btn.active')?.dataset.mode || 'total';
+      renderKpiStats(mode);
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(statLabels[id] || id));
+    container.appendChild(label);
   });
 }
 
@@ -191,6 +225,20 @@ document.getElementById('kpi-mode-toggle')?.addEventListener('click', e => {
   document.querySelectorAll('#kpi-mode-toggle .toggle-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderKpiStats(btn.dataset.mode);
+});
+
+// Stats toggle panel show/hide
+document.getElementById('stats-toggle-btn')?.addEventListener('click', () => {
+  const panel = document.getElementById('stats-toggle-panel');
+  const btn = document.getElementById('stats-toggle-btn');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    btn.classList.add('active');
+    renderStatsToggle();
+  } else {
+    panel.style.display = 'none';
+    btn.classList.remove('active');
+  }
 });
 
 // ══════════════════════════════════════════════════
@@ -330,13 +378,6 @@ function renderOverview() {
   })() : null;
   document.getElementById('kpi-reach').innerHTML = fmt(avgReachVal) + changeBadge(avgReachChange);
 
-  const totalLikes = sum(posts.map(p => p.likes));
-  document.getElementById('kpi-likes').innerHTML = fmt(totalLikes) + changeBadge(getDailyChange(daily, 'total_likes'));
-
-  // 공유율 (Share Rate)
-  const shareRatesTop = posts.map(p => p.share_rate).filter(v => v != null);
-  document.getElementById('kpi-share-rate').innerHTML = fmtPct(avg(shareRatesTop)) + changeBadge(getDailyChange(daily, 'avg_share_rate'), true);
-
   const top = posts.find(p => p.rank === 1);
   document.getElementById('kpi-top').textContent = top ? top.title : '-';
 
@@ -349,6 +390,8 @@ function renderOverview() {
     { id: 'shares', sumVal: sum(posts.map(p => p.shares)), avgVal: Math.round(avg(posts.map(p => p.shares).filter(v => v != null))), daily: 'total_shares', labelT: '전체 공유', labelA: '평균 공유' },
     { id: 'comments', sumVal: sum(posts.map(p => p.comments)), avgVal: Math.round(avg(posts.map(p => p.comments).filter(v => v != null))), daily: 'total_comments', labelT: '전체 댓글', labelA: '평균 댓글' },
     { id: 'engagement', sumVal: sum(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0))), avgVal: Math.round(avg(posts.map(p => (p.likes||0)+(p.saves||0)+(p.shares||0)+(p.comments||0)))), daily: 'total_engagement', labelT: '전체 참여', labelA: '평균 참여' },
+    { id: 'share_rate', isPct: true, sumVal: +avg(posts.map(p => p.share_rate).filter(v => v != null)).toFixed(1), avgVal: +avg(posts.map(p => p.share_rate).filter(v => v != null)).toFixed(1), daily: 'avg_share_rate', labelT: '평균 공유율', labelA: '평균 공유율' },
+    { id: 'follows', sumVal: sum(posts.map(p => p.follows || 0)), avgVal: Math.round(avg(posts.map(p => p.follows || 0))), daily: null, labelT: '전체 팔로우', labelA: '평균 팔로우' },
   ];
   // Store for toggle re-use
   window._kpiStatFields = statFields;
