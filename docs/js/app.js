@@ -137,10 +137,7 @@ function renderFollowerBanner() {
   banner.innerHTML =
     currentHtml +
     `<span class="fb-section-label">팔로우 유입</span>` +
-    followChangeBadge('전일', changes.daily) +
-    followChangeBadge('전주', changes.weekly) +
-    followChangeBadge('전월', changes.monthly) +
-    followChangeBadge('전년', changes.yearly);
+    followChangeBadge('전일', changes.daily);
 }
 
 // ── Milestone Filter ──
