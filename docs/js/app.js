@@ -1403,6 +1403,7 @@ function renderPostTable() {
     layout: 'fitColumns',
     height: '600px',
     pagination: false,
+    movableColumns: true,
     columns: buildColumns('rank'),
   });
 
@@ -1594,6 +1595,7 @@ function renderCategory() {
   new Tabulator('#cat-summary-table', {
     data: catStats,
     layout: 'fitColumns',
+    movableColumns: true,
     columns: [
       { title: '카테고리', field: 'category', width: 100 },
       { title: '게시물 수', field: 'count', width: 80, hozAlign: 'right', sorter: 'number' },
@@ -2121,6 +2123,7 @@ function renderContent() {
   new Tabulator('#top10-table', {
     data: top10,
     layout: 'fitColumns',
+    movableColumns: true,
     columns: [
       { title: '순위', field: 'rank', width: 55, hozAlign: 'center', sorter: 'number' },
       { title: '유형', field: 'media_type', width: 70, hozAlign: 'center', formatter: cell => typeLabel(cell.getValue()) },
