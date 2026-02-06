@@ -2237,6 +2237,74 @@ function analyzePerformance(posts) {
     weaknesses.push(`분석 기간 내 게시물이 <strong>${posts.length}개</strong>로 적음 — 일관된 포스팅 빈도 유지 필요`);
   }
 
+  // ── 실제 콘텐츠 기반 분석 ──
+  const topContents = { strengths: [], weaknesses: [] };
+
+  if (posts.length >= 3) {
+    // 참여율 Top 게시물
+    const sortedByEng = [...posts].filter(p => p.engagement_rate != null).sort((a, b) => b.engagement_rate - a.engagement_rate);
+    if (sortedByEng.length > 0) {
+      const topEng = sortedByEng[0];
+      const topTitle = topEng.caption ? (topEng.caption.length > 30 ? topEng.caption.slice(0, 30) + '...' : topEng.caption) : '(캡션 없음)';
+      strengths.push(`🏆 참여율 TOP: "<strong>${topTitle}</strong>" (${topEng.engagement_rate.toFixed(1)}%) — ${typeLabel(topEng.media_type)}, ${topEng.category || '미분류'}`);
+    }
+
+    // 저장율 Top 게시물
+    const sortedBySave = [...posts].filter(p => p.save_rate != null).sort((a, b) => b.save_rate - a.save_rate);
+    if (sortedBySave.length > 0 && sortedBySave[0] !== sortedByEng[0]) {
+      const topSave = sortedBySave[0];
+      const topTitle = topSave.caption ? (topSave.caption.length > 30 ? topSave.caption.slice(0, 30) + '...' : topSave.caption) : '(캡션 없음)';
+      strengths.push(`💾 저장율 TOP: "<strong>${topTitle}</strong>" (${topSave.save_rate.toFixed(1)}%) — 정보 가치가 높은 콘텐츠`);
+    }
+
+    // 공유율 Top 게시물
+    const sortedByShare = [...posts].filter(p => p.share_rate != null && p.share_rate > 0).sort((a, b) => b.share_rate - a.share_rate);
+    if (sortedByShare.length > 0) {
+      const topShare = sortedByShare[0];
+      const topTitle = topShare.caption ? (topShare.caption.length > 30 ? topShare.caption.slice(0, 30) + '...' : topShare.caption) : '(캡션 없음)';
+      if (topShare.share_rate >= 0.5) {
+        strengths.push(`📤 공유율 TOP: "<strong>${topTitle}</strong>" (${topShare.share_rate.toFixed(1)}%) — 바이럴 콘텐츠`);
+      }
+    }
+
+    // 도달 Top 게시물
+    const sortedByReach = [...posts].filter(p => p.reach != null).sort((a, b) => b.reach - a.reach);
+    if (sortedByReach.length > 0) {
+      const topReach = sortedByReach[0];
+      const topTitle = topReach.caption ? (topReach.caption.length > 30 ? topReach.caption.slice(0, 30) + '...' : topReach.caption) : '(캡션 없음)';
+      strengths.push(`👀 도달 TOP: "<strong>${topTitle}</strong>" (${fmt(topReach.reach)}) — 알고리즘 노출 성공`);
+    }
+
+    // 개선 필요 콘텐츠 분석
+    // 참여율 낮은 게시물
+    const lowEngPosts = posts.filter(p => p.engagement_rate != null && p.engagement_rate < stats.avgEngRate * 0.5);
+    if (lowEngPosts.length > 0) {
+      const worst = lowEngPosts.sort((a, b) => a.engagement_rate - b.engagement_rate)[0];
+      const worstTitle = worst.caption ? (worst.caption.length > 30 ? worst.caption.slice(0, 30) + '...' : worst.caption) : '(캡션 없음)';
+      weaknesses.push(`📉 참여율 낮음: "<strong>${worstTitle}</strong>" (${worst.engagement_rate.toFixed(1)}%) — ${typeLabel(worst.media_type)}, 캡션/CTA 개선 필요`);
+    }
+
+    // 도달 대비 저장이 매우 낮은 게시물
+    const lowSavePosts = posts.filter(p => p.save_rate != null && p.save_rate < 0.5 && p.reach > stats.avgReach);
+    if (lowSavePosts.length > 0) {
+      const worst = lowSavePosts.sort((a, b) => a.save_rate - b.save_rate)[0];
+      const worstTitle = worst.caption ? (worst.caption.length > 30 ? worst.caption.slice(0, 30) + '...' : worst.caption) : '(캡션 없음)';
+      weaknesses.push(`💾 저장율 낮음: "<strong>${worstTitle}</strong>" (${worst.save_rate.toFixed(1)}%) — 도달은 좋으나 정보 가치 부족`);
+    }
+
+    // 릴스 중 참여율 낮은 콘텐츠
+    const reels = posts.filter(p => p.media_type === 'VIDEO');
+    if (reels.length >= 3) {
+      const avgReelEng = avg(reels.map(p => p.engagement_rate).filter(v => v != null));
+      const lowReels = reels.filter(p => p.engagement_rate != null && p.engagement_rate < avgReelEng * 0.5);
+      if (lowReels.length > 0) {
+        const worst = lowReels[0];
+        const worstTitle = worst.caption ? (worst.caption.length > 25 ? worst.caption.slice(0, 25) + '...' : worst.caption) : '(캡션 없음)';
+        weaknesses.push(`🎬 릴스 개선 필요: "<strong>${worstTitle}</strong>" — 초반 3초 훅/음악/자막 점검 필요`);
+      }
+    }
+  }
+
   return { strengths, weaknesses, stats };
 }
 
