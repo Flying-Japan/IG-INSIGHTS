@@ -55,9 +55,15 @@ body {
   align-items: center;
   gap: 12px;
 }
-.header-logo {
-  height: 32px;
-  width: auto;
+.header-brand {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 1px;
+}
+.header-divider {
+  color: rgba(255,255,255,0.4);
+  font-weight: 300;
 }
 .header-right {
   display: flex;
@@ -915,61 +921,77 @@ body {
 .contribution-grid {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 .contrib-row {
   display: flex;
   justify-content: center;
-  gap: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 .contrib-row-top {
-  gap: 32px;
-  margin-bottom: 4px;
+  gap: 20px;
+  margin-bottom: 8px;
 }
 .contrib-row-rest {
-  gap: 20px;
+  gap: 16px;
 }
 .contrib-item {
   text-align: center;
   flex: 0 0 auto;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px 24px;
+  min-width: 160px;
+  transition: all 0.2s;
+}
+.contrib-item:hover {
+  border-color: var(--fj-primary);
+  box-shadow: 0 4px 12px rgba(46,74,158,0.1);
 }
 .contrib-highlight {
-  padding: 12px 16px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 12px;
+  padding: 24px 28px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #faf5ff 100%);
+  border: 2px solid var(--fj-primary);
+  border-radius: 20px;
+  min-width: 180px;
+}
+.contrib-highlight:hover {
+  box-shadow: 0 6px 20px rgba(46,74,158,0.15);
 }
 .contrib-chart {
   position: relative;
-  margin: 0 auto 6px;
+  margin: 0 auto 10px;
 }
 .contrib-label {
-  font-size: 13px;
-  color: var(--text2);
-  margin-bottom: 4px;
-  font-weight: 600;
-}
-.contrib-highlight .contrib-label {
   font-size: 14px;
   color: var(--text);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+.contrib-highlight .contrib-label {
+  font-size: 16px;
+  color: var(--fj-primary);
+  font-weight: 800;
 }
 .contrib-detail {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text2);
-  opacity: 0.7;
+  font-weight: 500;
 }
 .contrib-badge {
   display: inline-block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 2px 10px;
-  border-radius: 10px;
-  margin-top: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-top: 8px;
   letter-spacing: 0.5px;
 }
 .contrib-badge.top {
-  background: rgba(0, 200, 83, 0.15);
-  color: var(--green);
+  background: var(--green);
+  color: #ffffff;
 }
 
 /* ── Compact Number Toggle ── */
