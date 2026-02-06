@@ -1691,7 +1691,7 @@ function showDayPostsModal(dayStats, modeLabel) {
     const date = formatDateWithDayLocal(p.upload_date);
     const title = getPostTitleLocal(p);
     const label = title ? `${date} / ${title}` : date;
-    const link = p.permalink || (p.id ? `https://www.instagram.com/p/${p.id}/` : null);
+    const link = p.url || p.permalink || (p.id ? `https://www.instagram.com/p/${p.id}/` : null);
     const linkHtml = link
       ? `<a href="${link}" target="_blank" style="color:var(--fj-primary);text-decoration:underline;">${label}</a>`
       : label;
@@ -2378,8 +2378,9 @@ function analyzePerformance(posts) {
   }
 
   // ── 실제 콘텐츠 기반 분석 (카테고리별 분류) ──
-  // 게시물 링크 생성 (permalink가 있으면 사용, 없으면 id로 생성)
+  // 게시물 링크 생성 (url > permalink > id 순으로 확인)
   function getPostLink(post) {
+    if (post.url) return post.url;
     if (post.permalink) return post.permalink;
     if (post.id) return `https://www.instagram.com/p/${post.id}/`;
     return null;
