@@ -2238,18 +2238,32 @@ function analyzePerformance(posts) {
   }
 
   // ── 실제 콘텐츠 기반 분석 (카테고리별 분류) ──
-  // 게시물 식별용 헬퍼 함수
-  function getPostIdentifier(post) {
-    // 1순위: 캡션 앞부분
-    if (post.caption && post.caption.trim()) {
-      const caption = post.caption.trim();
-      return caption.length > 25 ? caption.slice(0, 25) + '...' : caption;
-    }
-    // 2순위: 업로드 날짜 + 콘텐츠 타입 + 카테고리
-    const date = post.upload_date ? post.upload_date.slice(0, 10) : '날짜미상';
+  // 게시물 링크 생성 (permalink가 있으면 사용, 없으면 id로 생성)
+  function getPostLink(post) {
+    if (post.permalink) return post.permalink;
+    if (post.id) return `https://www.instagram.com/p/${post.id}/`;
+    return null;
+  }
+
+  // 날짜 포맷 (M/D 형식)
+  function formatDateShort(dateStr) {
+    if (!dateStr) return '날짜미상';
+    const d = new Date(dateStr);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  }
+
+  // 게시물 식별 + 링크 HTML 생성
+  function getPostIdentifierWithLink(post) {
+    const date = formatDateShort(post.upload_date);
     const type = typeLabel(post.media_type);
-    const cat = post.category || '';
-    return `${date} ${type}${cat ? ' [' + cat + ']' : ''}`;
+    const cat = post.category ? `[${post.category}]` : '';
+    const label = `${date} ${type} ${cat}`.trim();
+    const link = getPostLink(post);
+
+    if (link) {
+      return `<a href="${link}" target="_blank" style="color:var(--fj-primary);text-decoration:underline;">${label}</a>`;
+    }
+    return label;
   }
 
   // 카테고리별 분류
@@ -2262,7 +2276,7 @@ function analyzePerformance(posts) {
     const sortedByEng = [...posts].filter(p => p.engagement_rate != null).sort((a, b) => b.engagement_rate - a.engagement_rate);
     if (sortedByEng.length > 0) {
       const top = sortedByEng[0];
-      contentStrengths.push(`🏆 참여율 1위: "<strong>${getPostIdentifier(top)}</strong>" — ${top.engagement_rate.toFixed(1)}% (${typeLabel(top.media_type)}, ${top.category || '미분류'})`);
+      contentStrengths.push(`🏆 참여율 1위: ${getPostIdentifierWithLink(top)} — <strong>${top.engagement_rate.toFixed(1)}%</strong>`);
     }
 
     // 저장율 Top 게시물
@@ -2270,7 +2284,7 @@ function analyzePerformance(posts) {
     if (sortedBySave.length > 0) {
       const top = sortedBySave[0];
       if (!sortedByEng.length || top.id !== sortedByEng[0].id) {
-        contentStrengths.push(`💾 저장율 1위: "<strong>${getPostIdentifier(top)}</strong>" — ${top.save_rate.toFixed(1)}% (정보/실용적 가치 높음)`);
+        contentStrengths.push(`💾 저장율 1위: ${getPostIdentifierWithLink(top)} — <strong>${top.save_rate.toFixed(1)}%</strong> (정보 가치 높음)`);
       }
     }
 
@@ -2278,14 +2292,14 @@ function analyzePerformance(posts) {
     const sortedByShare = [...posts].filter(p => p.share_rate != null && p.share_rate > 0.3).sort((a, b) => b.share_rate - a.share_rate);
     if (sortedByShare.length > 0) {
       const top = sortedByShare[0];
-      contentStrengths.push(`📤 공유율 1위: "<strong>${getPostIdentifier(top)}</strong>" — ${top.share_rate.toFixed(1)}% (바이럴 잠재력)`);
+      contentStrengths.push(`📤 공유율 1위: ${getPostIdentifierWithLink(top)} — <strong>${top.share_rate.toFixed(1)}%</strong> (바이럴)`);
     }
 
     // 도달 Top 게시물
     const sortedByReach = [...posts].filter(p => p.reach != null).sort((a, b) => b.reach - a.reach);
     if (sortedByReach.length > 0) {
       const top = sortedByReach[0];
-      contentStrengths.push(`👀 도달 1위: "<strong>${getPostIdentifier(top)}</strong>" — ${fmt(top.reach)}명 (알고리즘 노출 성공)`);
+      contentStrengths.push(`👀 도달 1위: ${getPostIdentifierWithLink(top)} — <strong>${fmt(top.reach)}명</strong>`);
     }
 
     // ── 개선 필요 콘텐츠 분석 ──
@@ -2293,14 +2307,14 @@ function analyzePerformance(posts) {
     const lowEngPosts = posts.filter(p => p.engagement_rate != null && p.engagement_rate < stats.avgEngRate * 0.5);
     if (lowEngPosts.length > 0) {
       const worst = lowEngPosts.sort((a, b) => a.engagement_rate - b.engagement_rate)[0];
-      contentWeaknesses.push(`📉 참여율 저조: "<strong>${getPostIdentifier(worst)}</strong>" — ${worst.engagement_rate.toFixed(1)}% (캡션/CTA 점검 필요)`);
+      contentWeaknesses.push(`📉 참여율 저조: ${getPostIdentifierWithLink(worst)} — ${worst.engagement_rate.toFixed(1)}% (캡션/CTA 점검)`);
     }
 
     // 도달 대비 저장이 낮은 게시물
     const lowSavePosts = posts.filter(p => p.save_rate != null && p.save_rate < 0.5 && p.reach > stats.avgReach);
     if (lowSavePosts.length > 0) {
       const worst = lowSavePosts.sort((a, b) => a.save_rate - b.save_rate)[0];
-      contentWeaknesses.push(`💾 저장율 저조: "<strong>${getPostIdentifier(worst)}</strong>" — ${worst.save_rate.toFixed(1)}% (도달 높으나 정보 가치 부족)`);
+      contentWeaknesses.push(`💾 저장율 저조: ${getPostIdentifierWithLink(worst)} — ${worst.save_rate.toFixed(1)}% (정보 가치 부족)`);
     }
 
     // 릴스 중 성과 낮은 콘텐츠
@@ -2310,7 +2324,7 @@ function analyzePerformance(posts) {
       const lowReels = reels.filter(p => p.engagement_rate != null && p.engagement_rate < avgReelEng * 0.5);
       if (lowReels.length > 0) {
         const worst = lowReels.sort((a, b) => a.engagement_rate - b.engagement_rate)[0];
-        contentWeaknesses.push(`🎬 릴스 개선: "<strong>${getPostIdentifier(worst)}</strong>" — 초반 3초 훅/음악/자막 점검`);
+        contentWeaknesses.push(`🎬 릴스 개선: ${getPostIdentifierWithLink(worst)} — 초반 훅/음악 점검`);
       }
     }
 
@@ -2321,7 +2335,7 @@ function analyzePerformance(posts) {
       const lowCars = carousels.filter(p => p.engagement_rate != null && p.engagement_rate < avgCarEng * 0.5);
       if (lowCars.length > 0) {
         const worst = lowCars.sort((a, b) => a.engagement_rate - b.engagement_rate)[0];
-        contentWeaknesses.push(`📸 캐러셀 개선: "<strong>${getPostIdentifier(worst)}</strong>" — 첫 장/슬라이드 구성 점검`);
+        contentWeaknesses.push(`📸 캐러셀 개선: ${getPostIdentifierWithLink(worst)} — 첫 장 구성 점검`);
       }
     }
   }
