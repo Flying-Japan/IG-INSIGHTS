@@ -2814,6 +2814,15 @@ const WORKER_URL = ''; // Cloudflare Worker URL을 여기에 설정
 document.addEventListener('DOMContentLoaded', () => {
   init();
 
+  // Header title click - go to overview tab
+  document.getElementById('header-title')?.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('.tab-btn[data-tab="overview"]')?.classList.add('active');
+    document.getElementById('overview')?.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
   // Export report button
   document.getElementById('export-report-btn')?.addEventListener('click', exportReport);
 
