@@ -1002,12 +1002,12 @@ function renderContribution() {
               show: true,
               name: { show: false },
               value: { show: true, fontSize, fontWeight: 700,
-                color: isTop ? d.color : '#334155',
+                color: d.color,
                 formatter: () => afterPct + '%'
               },
               total: { show: true, showAlways: true,
                 fontSize, fontWeight: 700,
-                color: isTop ? d.color : '#334155',
+                color: d.color,
                 formatter: () => afterPct + '%'
               }
             }
