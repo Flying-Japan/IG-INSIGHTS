@@ -534,6 +534,18 @@ function renderKpiStats(mode, periodPosts) {
     }
     if (f.id === 'followers') {
       if (valueEl) valueEl.textContent = fmt(f.val);
+      // 전일 대비 팔로워 변화
+      const changeEl = document.getElementById('kpi-followers-change');
+      if (changeEl && followers.length >= 2) {
+        const cur = followers[followers.length - 1].followers || 0;
+        const prev = followers[followers.length - 2].followers || 0;
+        const diff = cur - prev;
+        const sign = diff >= 0 ? '+' : '';
+        const cls = diff > 0 ? 'positive' : diff < 0 ? 'negative' : '';
+        changeEl.innerHTML = `<span class="change-badge ${cls}">${sign}${fmt(diff)} 전일대비</span>`;
+      } else if (changeEl) {
+        changeEl.innerHTML = '';
+      }
       return;
     }
     if (valueEl) {
@@ -542,7 +554,20 @@ function renderKpiStats(mode, periodPosts) {
       const showChange = isTotal && f.daily;
       const bm = statBenchmarks[f.id];
       const grade = getGrade(bm, f.val);
-      valueEl.innerHTML = `<span title="${fullNum}">${formatted}</span>` + gradeBadgeHtml(grade) + (showChange ? changeBadge(getDailyChange(daily, f.daily), f.isPct) : '');
+      let changeHtml = showChange ? changeBadge(getDailyChange(daily, f.daily), f.isPct) : '';
+
+      // follows 전일 대비: postsYesterday와 비교
+      if (f.id === 'follows' && isTotal && DATA.postsYesterday && DATA.postsYesterday.length) {
+        const yesterdayFollows = sum(DATA.postsYesterday.map(p => p.follows || 0));
+        const diff = f.val - yesterdayFollows;
+        if (diff !== 0) {
+          const sign = diff >= 0 ? '+' : '';
+          const cls = diff > 0 ? 'positive' : diff < 0 ? 'negative' : '';
+          changeHtml = `<span class="change-badge ${cls}">${sign}${fmt(diff)}</span>`;
+        }
+      }
+
+      valueEl.innerHTML = `<span title="${fullNum}">${formatted}</span>` + gradeBadgeHtml(grade) + changeHtml;
     }
   });
 }
