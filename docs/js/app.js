@@ -201,6 +201,106 @@ function filterFollowersByMilestone(followers) {
   });
 }
 
+// ── Manual Input Data (릴스 프로필 지표 수동 입력) ──
+const MANUAL_DATA_KEY = 'ig-insights-manual-data';
+
+function getManualData() {
+  try {
+    const data = localStorage.getItem(MANUAL_DATA_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch (e) { return {}; }
+}
+
+function saveManualData(url, data) {
+  try {
+    const all = getManualData();
+    all[url] = { ...data, updated_at: new Date().toISOString() };
+    localStorage.setItem(MANUAL_DATA_KEY, JSON.stringify(all));
+  } catch (e) { console.warn('수동 데이터 저장 실패:', e); }
+}
+
+function applyManualData(posts) {
+  const manual = getManualData();
+  posts.forEach(p => {
+    if (manual[p.url]) {
+      const m = manual[p.url];
+      if (m.profile_visits != null) p.profile_visits = m.profile_visits;
+      if (m.profile_activity != null) p.profile_activity = m.profile_activity;
+      if (m.follows != null) {
+        p.follows = m.follows;
+        p.follow_rate = (p.follows != null && p.reach > 0) ? +(p.follows / p.reach * 100).toFixed(2) : null;
+      }
+      p._hasManualData = true;
+    }
+  });
+}
+
+let currentManualEditPost = null;
+
+function openManualInputModal(post) {
+  currentManualEditPost = post;
+  const modal = document.getElementById('manual-input-modal');
+  const meta = document.getElementById('manual-input-meta');
+  const manual = getManualData()[post.url] || {};
+
+  meta.innerHTML = `<strong>${post.title || '(제목 없음)'}</strong><br>
+    <span style="color:var(--text2)">${post.upload_date} · ${typeLabel(post.media_type)}</span>`;
+
+  document.getElementById('manual-profile-visits').value = manual.profile_visits ?? post.profile_visits ?? '';
+  document.getElementById('manual-profile-activity').value = manual.profile_activity ?? post.profile_activity ?? '';
+  document.getElementById('manual-follows').value = manual.follows ?? post.follows ?? '';
+
+  modal.style.display = 'flex';
+}
+
+function closeManualInputModal() {
+  document.getElementById('manual-input-modal').style.display = 'none';
+  currentManualEditPost = null;
+}
+
+function saveManualInput() {
+  if (!currentManualEditPost) return;
+
+  const profileVisits = parseInt(document.getElementById('manual-profile-visits').value) || 0;
+  const profileActivity = parseInt(document.getElementById('manual-profile-activity').value) || 0;
+  const follows = parseInt(document.getElementById('manual-follows').value) || 0;
+
+  saveManualData(currentManualEditPost.url, {
+    profile_visits: profileVisits,
+    profile_activity: profileActivity,
+    follows: follows
+  });
+
+  // DATA에 즉시 반영
+  const post = DATA.posts.find(p => p.url === currentManualEditPost.url);
+  if (post) {
+    post.profile_visits = profileVisits;
+    post.profile_activity = profileActivity;
+    post.follows = follows;
+    post.follow_rate = (follows != null && post.reach > 0) ? +(follows / post.reach * 100).toFixed(2) : null;
+    post._hasManualData = true;
+  }
+
+  closeManualInputModal();
+
+  // 테이블 새로고침
+  if (window.postTable) {
+    window.postTable.replaceData(recalcRankedData(filterByMilestone(DATA.posts), currentSortField, currentSortDir));
+  }
+
+  // KPI 업데이트
+  renderKpiStats(document.getElementById('kpi-mode-dropdown').value);
+}
+
+function setupManualInputModal() {
+  document.getElementById('manual-input-close').addEventListener('click', closeManualInputModal);
+  document.getElementById('manual-input-cancel').addEventListener('click', closeManualInputModal);
+  document.getElementById('manual-input-save').addEventListener('click', saveManualInput);
+  document.getElementById('manual-input-modal').addEventListener('click', e => {
+    if (e.target.id === 'manual-input-modal') closeManualInputModal();
+  });
+}
+
 // ── Data Store ──
 let DATA = { posts: [], followers: [], daily: [], meta: {}, postsYesterday: [] };
 
@@ -232,11 +332,16 @@ async function init() {
 
     DATA = { posts, followers, daily, meta, postsYesterday };
     DATA._hasYesterday = postsYesterday.length > 0;
+
+    // 수동 입력 데이터 병합 (릴스 프로필 지표)
+    applyManualData(DATA.posts);
+
     document.getElementById('update-time').textContent = meta.updated_at_ko;
     document.getElementById('loading').classList.add('hidden');
 
     setupTabs();
     setupMilestoneFilter();
+    setupManualInputModal();
     renderAll();
   } catch (e) {
     document.getElementById('loading').innerHTML = '<p>데이터 로딩 실패: ' + e.message + '</p>';
@@ -1113,8 +1218,17 @@ const colDef = {
       }
       return `<span style="color:${color}">${v.toFixed(1)}%</span>${changeHtml}`;
     }}),
-  follows:    () => ({ title: '팔로우', field: 'follows', width: 80, hozAlign: 'right', sorter: 'number',
-    formatter: cell => fmtWithChange(cell.getValue(), 'follows', cell.getRow().getData()) }),
+  follows:    () => ({ title: '팔로우', field: 'follows', width: 100, hozAlign: 'right', sorter: 'number',
+    formatter: (cell, formatterParams, onRendered) => {
+      const row = cell.getRow().getData();
+      const v = cell.getValue();
+      const isVideo = row.media_type === 'VIDEO';
+      const hasManual = row._hasManualData;
+      let val = fmtWithChange(v, 'follows', row);
+      if (hasManual) val += '<span class="manual-badge">수동</span>';
+      if (isVideo) val += `<button class="manual-edit-btn" data-url="${row.url}" title="수동 입력">✏️</button>`;
+      return val;
+    }}),
   follow_rate: () => ({ title: '팔로우 전환율', field: 'follow_rate', width: 105, hozAlign: 'right', sorter: 'number',
     formatter: cell => {
       const v = cell.getValue();
@@ -1576,9 +1690,16 @@ function renderPostTable() {
     }, 50);
   });
 
-  // Row click → diagnosis modal
+  // Row click → diagnosis modal or manual input
   postTable.on('rowClick', (e, row) => {
     if (e.target.tagName === 'A') return;
+    // 수동 입력 버튼 클릭
+    if (e.target.classList.contains('manual-edit-btn')) {
+      e.stopPropagation();
+      const post = DATA.posts.find(p => p.url === e.target.dataset.url);
+      if (post) openManualInputModal(post);
+      return;
+    }
     showPostModal(row.getData());
   });
 

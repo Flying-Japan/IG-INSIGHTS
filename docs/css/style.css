@@ -1109,6 +1109,68 @@ body {
 .diag-item.bad .diag-label { color: var(--red); }
 .diag-text { font-size: 13px; color: var(--text); line-height: 1.6; }
 
+/* ── Manual Input Modal ── */
+.modal-sm { max-width: 400px; }
+.modal-desc {
+  font-size: 13px; color: var(--text2); line-height: 1.5;
+  margin-bottom: 16px; padding-right: 20px;
+}
+.manual-input-meta {
+  background: var(--bg3); border-radius: 8px; padding: 12px;
+  margin-bottom: 16px; font-size: 13px;
+}
+.manual-input-meta strong { color: var(--accent3); }
+.manual-input-form {
+  display: flex; flex-direction: column; gap: 12px;
+  margin-bottom: 20px;
+}
+.input-row {
+  display: flex; align-items: center; gap: 12px;
+}
+.input-row label {
+  flex: 0 0 100px; font-size: 13px; color: var(--text);
+}
+.input-row input {
+  flex: 1; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--bg3); color: var(--text);
+  font-size: 14px; font-family: inherit;
+}
+.input-row input:focus {
+  outline: none; border-color: var(--accent3);
+}
+.input-row input::placeholder { color: var(--text2); }
+.manual-input-actions {
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+.btn-secondary, .btn-primary {
+  padding: 10px 20px; border-radius: 8px; font-size: 13px;
+  font-weight: 600; cursor: pointer; border: none; transition: all 0.2s;
+}
+.btn-secondary {
+  background: var(--bg3); color: var(--text);
+}
+.btn-secondary:hover { background: var(--border); }
+.btn-primary {
+  background: var(--accent3); color: #fff;
+}
+.btn-primary:hover { background: var(--accent); }
+.manual-input-note {
+  font-size: 11px; color: var(--text2); margin-top: 16px;
+  padding-top: 12px; border-top: 1px solid var(--border);
+}
+/* 테이블 내 수동입력 버튼 */
+.manual-edit-btn {
+  padding: 2px 6px; font-size: 10px; border: 1px solid var(--accent3);
+  border-radius: 4px; background: transparent; color: var(--accent3);
+  cursor: pointer; margin-left: 4px;
+}
+.manual-edit-btn:hover { background: var(--accent3); color: #fff; }
+.manual-badge {
+  display: inline-block; font-size: 9px; padding: 1px 4px;
+  background: var(--accent3); color: #fff; border-radius: 3px;
+  margin-left: 4px; vertical-align: middle;
+}
+
 /* ── Responsive ── */
 /* ── Follower Banner ── */
 .follower-banner {
