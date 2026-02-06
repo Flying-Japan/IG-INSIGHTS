@@ -2237,75 +2237,96 @@ function analyzePerformance(posts) {
     weaknesses.push(`분석 기간 내 게시물이 <strong>${posts.length}개</strong>로 적음 — 일관된 포스팅 빈도 유지 필요`);
   }
 
-  // ── 실제 콘텐츠 기반 분석 ──
-  const topContents = { strengths: [], weaknesses: [] };
+  // ── 실제 콘텐츠 기반 분석 (카테고리별 분류) ──
+  // 게시물 식별용 헬퍼 함수
+  function getPostIdentifier(post) {
+    // 1순위: 캡션 앞부분
+    if (post.caption && post.caption.trim()) {
+      const caption = post.caption.trim();
+      return caption.length > 25 ? caption.slice(0, 25) + '...' : caption;
+    }
+    // 2순위: 업로드 날짜 + 콘텐츠 타입 + 카테고리
+    const date = post.upload_date ? post.upload_date.slice(0, 10) : '날짜미상';
+    const type = typeLabel(post.media_type);
+    const cat = post.category || '';
+    return `${date} ${type}${cat ? ' [' + cat + ']' : ''}`;
+  }
+
+  // 카테고리별 분류
+  const contentStrengths = [];  // 콘텐츠 기반 강점
+  const contentWeaknesses = []; // 콘텐츠 기반 개선점
 
   if (posts.length >= 3) {
+    // ── TOP 콘텐츠 분석 ──
     // 참여율 Top 게시물
     const sortedByEng = [...posts].filter(p => p.engagement_rate != null).sort((a, b) => b.engagement_rate - a.engagement_rate);
     if (sortedByEng.length > 0) {
-      const topEng = sortedByEng[0];
-      const topTitle = topEng.caption ? (topEng.caption.length > 30 ? topEng.caption.slice(0, 30) + '...' : topEng.caption) : '(캡션 없음)';
-      strengths.push(`🏆 참여율 TOP: "<strong>${topTitle}</strong>" (${topEng.engagement_rate.toFixed(1)}%) — ${typeLabel(topEng.media_type)}, ${topEng.category || '미분류'}`);
+      const top = sortedByEng[0];
+      contentStrengths.push(`🏆 참여율 1위: "<strong>${getPostIdentifier(top)}</strong>" — ${top.engagement_rate.toFixed(1)}% (${typeLabel(top.media_type)}, ${top.category || '미분류'})`);
     }
 
     // 저장율 Top 게시물
     const sortedBySave = [...posts].filter(p => p.save_rate != null).sort((a, b) => b.save_rate - a.save_rate);
-    if (sortedBySave.length > 0 && sortedBySave[0] !== sortedByEng[0]) {
-      const topSave = sortedBySave[0];
-      const topTitle = topSave.caption ? (topSave.caption.length > 30 ? topSave.caption.slice(0, 30) + '...' : topSave.caption) : '(캡션 없음)';
-      strengths.push(`💾 저장율 TOP: "<strong>${topTitle}</strong>" (${topSave.save_rate.toFixed(1)}%) — 정보 가치가 높은 콘텐츠`);
+    if (sortedBySave.length > 0) {
+      const top = sortedBySave[0];
+      if (!sortedByEng.length || top.id !== sortedByEng[0].id) {
+        contentStrengths.push(`💾 저장율 1위: "<strong>${getPostIdentifier(top)}</strong>" — ${top.save_rate.toFixed(1)}% (정보/실용적 가치 높음)`);
+      }
     }
 
     // 공유율 Top 게시물
-    const sortedByShare = [...posts].filter(p => p.share_rate != null && p.share_rate > 0).sort((a, b) => b.share_rate - a.share_rate);
+    const sortedByShare = [...posts].filter(p => p.share_rate != null && p.share_rate > 0.3).sort((a, b) => b.share_rate - a.share_rate);
     if (sortedByShare.length > 0) {
-      const topShare = sortedByShare[0];
-      const topTitle = topShare.caption ? (topShare.caption.length > 30 ? topShare.caption.slice(0, 30) + '...' : topShare.caption) : '(캡션 없음)';
-      if (topShare.share_rate >= 0.5) {
-        strengths.push(`📤 공유율 TOP: "<strong>${topTitle}</strong>" (${topShare.share_rate.toFixed(1)}%) — 바이럴 콘텐츠`);
-      }
+      const top = sortedByShare[0];
+      contentStrengths.push(`📤 공유율 1위: "<strong>${getPostIdentifier(top)}</strong>" — ${top.share_rate.toFixed(1)}% (바이럴 잠재력)`);
     }
 
     // 도달 Top 게시물
     const sortedByReach = [...posts].filter(p => p.reach != null).sort((a, b) => b.reach - a.reach);
     if (sortedByReach.length > 0) {
-      const topReach = sortedByReach[0];
-      const topTitle = topReach.caption ? (topReach.caption.length > 30 ? topReach.caption.slice(0, 30) + '...' : topReach.caption) : '(캡션 없음)';
-      strengths.push(`👀 도달 TOP: "<strong>${topTitle}</strong>" (${fmt(topReach.reach)}) — 알고리즘 노출 성공`);
+      const top = sortedByReach[0];
+      contentStrengths.push(`👀 도달 1위: "<strong>${getPostIdentifier(top)}</strong>" — ${fmt(top.reach)}명 (알고리즘 노출 성공)`);
     }
 
-    // 개선 필요 콘텐츠 분석
+    // ── 개선 필요 콘텐츠 분석 ──
     // 참여율 낮은 게시물
     const lowEngPosts = posts.filter(p => p.engagement_rate != null && p.engagement_rate < stats.avgEngRate * 0.5);
     if (lowEngPosts.length > 0) {
       const worst = lowEngPosts.sort((a, b) => a.engagement_rate - b.engagement_rate)[0];
-      const worstTitle = worst.caption ? (worst.caption.length > 30 ? worst.caption.slice(0, 30) + '...' : worst.caption) : '(캡션 없음)';
-      weaknesses.push(`📉 참여율 낮음: "<strong>${worstTitle}</strong>" (${worst.engagement_rate.toFixed(1)}%) — ${typeLabel(worst.media_type)}, 캡션/CTA 개선 필요`);
+      contentWeaknesses.push(`📉 참여율 저조: "<strong>${getPostIdentifier(worst)}</strong>" — ${worst.engagement_rate.toFixed(1)}% (캡션/CTA 점검 필요)`);
     }
 
-    // 도달 대비 저장이 매우 낮은 게시물
+    // 도달 대비 저장이 낮은 게시물
     const lowSavePosts = posts.filter(p => p.save_rate != null && p.save_rate < 0.5 && p.reach > stats.avgReach);
     if (lowSavePosts.length > 0) {
       const worst = lowSavePosts.sort((a, b) => a.save_rate - b.save_rate)[0];
-      const worstTitle = worst.caption ? (worst.caption.length > 30 ? worst.caption.slice(0, 30) + '...' : worst.caption) : '(캡션 없음)';
-      weaknesses.push(`💾 저장율 낮음: "<strong>${worstTitle}</strong>" (${worst.save_rate.toFixed(1)}%) — 도달은 좋으나 정보 가치 부족`);
+      contentWeaknesses.push(`💾 저장율 저조: "<strong>${getPostIdentifier(worst)}</strong>" — ${worst.save_rate.toFixed(1)}% (도달 높으나 정보 가치 부족)`);
     }
 
-    // 릴스 중 참여율 낮은 콘텐츠
+    // 릴스 중 성과 낮은 콘텐츠
     const reels = posts.filter(p => p.media_type === 'VIDEO');
     if (reels.length >= 3) {
       const avgReelEng = avg(reels.map(p => p.engagement_rate).filter(v => v != null));
       const lowReels = reels.filter(p => p.engagement_rate != null && p.engagement_rate < avgReelEng * 0.5);
       if (lowReels.length > 0) {
-        const worst = lowReels[0];
-        const worstTitle = worst.caption ? (worst.caption.length > 25 ? worst.caption.slice(0, 25) + '...' : worst.caption) : '(캡션 없음)';
-        weaknesses.push(`🎬 릴스 개선 필요: "<strong>${worstTitle}</strong>" — 초반 3초 훅/음악/자막 점검 필요`);
+        const worst = lowReels.sort((a, b) => a.engagement_rate - b.engagement_rate)[0];
+        contentWeaknesses.push(`🎬 릴스 개선: "<strong>${getPostIdentifier(worst)}</strong>" — 초반 3초 훅/음악/자막 점검`);
+      }
+    }
+
+    // 캐러셀 중 성과 낮은 콘텐츠
+    const carousels = posts.filter(p => p.media_type === 'CAROUSEL_ALBUM');
+    if (carousels.length >= 3) {
+      const avgCarEng = avg(carousels.map(p => p.engagement_rate).filter(v => v != null));
+      const lowCars = carousels.filter(p => p.engagement_rate != null && p.engagement_rate < avgCarEng * 0.5);
+      if (lowCars.length > 0) {
+        const worst = lowCars.sort((a, b) => a.engagement_rate - b.engagement_rate)[0];
+        contentWeaknesses.push(`📸 캐러셀 개선: "<strong>${getPostIdentifier(worst)}</strong>" — 첫 장/슬라이드 구성 점검`);
       }
     }
   }
 
-  return { strengths, weaknesses, stats };
+  return { strengths, weaknesses, contentStrengths, contentWeaknesses, stats };
 }
 
 function renderSummary(period, year, month, weekStart, weekEnd, dateStr) {
@@ -2328,7 +2349,7 @@ function renderSummary(period, year, month, weekStart, weekEnd, dateStr) {
     periodLabel = `${dd.getFullYear()}년 ${dd.getMonth()+1}월 ${dd.getDate()}일`;
   }
 
-  const { strengths, weaknesses, stats } = analyzePerformance(posts);
+  const { strengths, weaknesses, contentStrengths, contentWeaknesses, stats } = analyzePerformance(posts);
   const container = document.getElementById('summary-content');
   if (!posts.length) { container.innerHTML = '<p style="color:var(--text2)">해당 기간의 데이터가 없습니다.</p>'; return; }
 
@@ -2343,7 +2364,8 @@ function renderSummary(period, year, month, weekStart, weekEnd, dateStr) {
   html += `<div class="summary-stat"><div class="summary-stat-label">공유율</div><div class="summary-stat-value">${fmtPct(stats.avgShareRate)}${gradeBadgeHtml(getGrade(statBenchmarks.share_rate, stats.avgShareRate))}</div></div>`;
   html += `</div>`;
 
-  // Strengths & Weaknesses
+  // ── 지표 기반 강점/개선점 ──
+  html += `<h4 style="font-size:14px;font-weight:700;color:var(--text);margin:20px 0 12px;border-bottom:2px solid var(--fj-primary);padding-bottom:6px;">📊 지표 분석</h4>`;
   html += `<div class="summary-grid">`;
   html += `<div class="summary-card"><h4 class="positive">✓ 강점</h4>`;
   if (strengths.length) {
@@ -2360,6 +2382,31 @@ function renderSummary(period, year, month, weekStart, weekEnd, dateStr) {
   }
   html += `</div>`;
   html += `</div>`;
+
+  // ── 콘텐츠 기반 강점/개선점 ──
+  if (contentStrengths.length || contentWeaknesses.length) {
+    html += `<h4 style="font-size:14px;font-weight:700;color:var(--text);margin:24px 0 12px;border-bottom:2px solid var(--fj-primary);padding-bottom:6px;">📝 콘텐츠별 분석</h4>`;
+    html += `<div class="summary-grid">`;
+
+    // TOP 콘텐츠
+    html += `<div class="summary-card"><h4 class="positive">🏅 TOP 콘텐츠</h4>`;
+    if (contentStrengths.length) {
+      html += `<ul class="summary-list">${contentStrengths.map(s => `<li>${s}</li>`).join('')}</ul>`;
+    } else {
+      html += `<p style="color:var(--text2);font-size:13px">분석 데이터 부족</p>`;
+    }
+    html += `</div>`;
+
+    // 개선 필요 콘텐츠
+    html += `<div class="summary-card"><h4 class="negative">⚠️ 개선 필요</h4>`;
+    if (contentWeaknesses.length) {
+      html += `<ul class="summary-list">${contentWeaknesses.map(w => `<li>${w}</li>`).join('')}</ul>`;
+    } else {
+      html += `<p style="color:var(--text2);font-size:13px">전반적으로 양호 — 현재 전략 유지</p>`;
+    }
+    html += `</div>`;
+    html += `</div>`;
+  }
 
   container.innerHTML = html;
 }
