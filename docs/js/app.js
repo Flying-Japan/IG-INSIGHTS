@@ -1585,12 +1585,17 @@ function renderDowChartData() {
   }
 
   const dayMap = {};
-  dayOrder.forEach(d => { dayMap[d] = { reach: [], eng: [], count: 0 }; });
+  dayOrder.forEach(d => { dayMap[d] = { reach: [], eng: [], count: 0, posts: [] }; });
   filtered.forEach(p => {
     const m = p.upload_date.match(/\((.)\)/);
-    if (m && dayMap[m[1]]) { dayMap[m[1]].count++; if (p.reach) dayMap[m[1]].reach.push(p.reach); if (p.engagement_rate) dayMap[m[1]].eng.push(p.engagement_rate); }
+    if (m && dayMap[m[1]]) {
+      dayMap[m[1]].count++;
+      dayMap[m[1]].posts.push(p);
+      if (p.reach) dayMap[m[1]].reach.push(p.reach);
+      if (p.engagement_rate) dayMap[m[1]].eng.push(p.engagement_rate);
+    }
   });
-  const stats = dayOrder.map(d => ({ day: d, count: dayMap[d].count, avgReach: avg(dayMap[d].reach), avgEng: avg(dayMap[d].eng) }));
+  const stats = dayOrder.map(d => ({ day: d, count: dayMap[d].count, avgReach: avg(dayMap[d].reach), avgEng: avg(dayMap[d].eng), posts: dayMap[d].posts }));
 
   dowChartInstance = new ApexCharts(document.getElementById('chart-daily-reach'), {
     ...chartTheme,
@@ -1598,7 +1603,20 @@ function renderDowChartData() {
       { name: '평균 도달', type: 'bar', data: stats.map(s => Math.round(s.avgReach)) },
       { name: '평균 참여율', type: 'line', data: stats.map(s => +s.avgEng.toFixed(1)) },
     ],
-    chart: { ...chartTheme.chart, type: 'line', height: 300 },
+    chart: {
+      ...chartTheme.chart,
+      type: 'line',
+      height: 300,
+      events: {
+        dataPointSelection: function(event, chartContext, config) {
+          const dayIndex = config.dataPointIndex;
+          const dayStats = stats[dayIndex];
+          if (dayStats && dayStats.posts.length > 0) {
+            showDayPostsModal(dayStats, modeLabel);
+          }
+        }
+      }
+    },
     xaxis: { categories: stats.map(s => s.day + '요일'), labels: { style: { fontSize: '12px' } } },
     yaxis: [
       { title: { text: '평균 도달', style: { color: '#9499b3' } }, labels: { formatter: v => fmt(v) } },
@@ -1609,7 +1627,7 @@ function renderDowChartData() {
     stroke: { width: [0, 3] }, markers: { size: [0, 5] }, grid: chartTheme.grid,
     tooltip: { ...chartTheme.tooltip, shared: true, custom: ({ dataPointIndex }) => {
       const s = stats[dataPointIndex];
-      return `<div style="padding:10px;font-size:12px"><strong>${s.day}요일</strong> [${modeLabel}] (${s.count}개)<br>평균 도달: <b>${fmt(Math.round(s.avgReach))}</b><br>참여율: <b>${s.avgEng.toFixed(1)}%</b></div>`;
+      return `<div style="padding:10px;font-size:12px"><strong>${s.day}요일</strong> [${modeLabel}] (${s.count}개)<br>평균 도달: <b>${fmt(Math.round(s.avgReach))}</b><br>참여율: <b>${s.avgEng.toFixed(1)}%</b><br><span style="color:#666;font-size:10px">클릭하여 상세 보기</span></div>`;
     }},
     annotations: { xaxis: [{
       x: stats.reduce((best, s) => s.avgReach > best.avgReach && s.count > 0 ? s : best, stats[0]).day + '요일',
@@ -1618,6 +1636,86 @@ function renderDowChartData() {
     }]},
   });
   dowChartInstance.render();
+}
+
+// 요일별 콘텐츠 상세 모달
+function showDayPostsModal(dayStats, modeLabel) {
+  const { day, posts, avgReach, avgEng } = dayStats;
+
+  // 도달 순으로 정렬
+  const sortedPosts = [...posts].sort((a, b) => (b.reach || 0) - (a.reach || 0));
+
+  // 모달 HTML 생성
+  const postsHtml = sortedPosts.map((p, i) => {
+    const date = p.upload_date ? p.upload_date.split(' ')[0] : '날짜미상';
+    const type = typeLabel(p.media_type);
+    const link = p.permalink || (p.id ? `https://www.instagram.com/p/${p.id}/` : null);
+    const linkHtml = link
+      ? `<a href="${link}" target="_blank" style="color:var(--fj-primary);text-decoration:underline;">${date} ${type}</a>`
+      : `${date} ${type}`;
+
+    return `
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:8px 6px;text-align:center;color:#666;">${i + 1}</td>
+        <td style="padding:8px 6px;">${linkHtml}</td>
+        <td style="padding:8px 6px;text-align:right;font-weight:600;">${fmt(p.reach || 0)}</td>
+        <td style="padding:8px 6px;text-align:right;font-weight:600;">${(p.engagement_rate || 0).toFixed(1)}%</td>
+        <td style="padding:8px 6px;text-align:right;">${fmt(p.likes || 0)}</td>
+        <td style="padding:8px 6px;text-align:right;">${fmt(p.saved || 0)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const modalHtml = `
+    <div class="modal-overlay" id="day-posts-modal" style="z-index:2000;">
+      <div class="modal-content" style="max-width:700px;max-height:80vh;overflow-y:auto;">
+        <button class="modal-close" onclick="document.getElementById('day-posts-modal').remove()">×</button>
+        <h2 class="modal-title" style="margin-bottom:16px;">
+          📅 ${day}요일 콘텐츠 상세 <span style="font-size:14px;color:#666;font-weight:400;">[${modeLabel}]</span>
+        </h2>
+        <div style="display:flex;gap:20px;margin-bottom:16px;flex-wrap:wrap;">
+          <div style="background:#f0f4ff;padding:12px 16px;border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:#666;margin-bottom:4px;">총 게시물</div>
+            <div style="font-size:20px;font-weight:700;color:var(--fj-primary);">${posts.length}개</div>
+          </div>
+          <div style="background:#f0f4ff;padding:12px 16px;border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:#666;margin-bottom:4px;">평균 도달</div>
+            <div style="font-size:20px;font-weight:700;color:var(--fj-primary);">${fmt(Math.round(avgReach))}</div>
+          </div>
+          <div style="background:#e8fff0;padding:12px 16px;border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:#666;margin-bottom:4px;">평균 참여율</div>
+            <div style="font-size:20px;font-weight:700;color:#10b981;">${avgEng.toFixed(1)}%</div>
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:var(--fj-primary);color:#fff;">
+              <th style="padding:10px 6px;text-align:center;width:40px;">#</th>
+              <th style="padding:10px 6px;text-align:left;">콘텐츠</th>
+              <th style="padding:10px 6px;text-align:right;">도달</th>
+              <th style="padding:10px 6px;text-align:right;">참여율</th>
+              <th style="padding:10px 6px;text-align:right;">좋아요</th>
+              <th style="padding:10px 6px;text-align:right;">저장</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${postsHtml}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  // 기존 모달 제거 후 새로 추가
+  document.getElementById('day-posts-modal')?.remove();
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+  // 배경 클릭 시 닫기
+  document.getElementById('day-posts-modal').addEventListener('click', e => {
+    if (e.target.classList.contains('modal-overlay')) {
+      e.target.remove();
+    }
+  });
 }
 
 // 모드 전환 진입점
@@ -2252,12 +2350,11 @@ function analyzePerformance(posts) {
     return `${d.getMonth() + 1}/${d.getDate()}`;
   }
 
-  // 게시물 식별 + 링크 HTML 생성
+  // 게시물 식별 + 링크 HTML 생성 (날짜 + 콘텐츠 타입만)
   function getPostIdentifierWithLink(post) {
     const date = formatDateShort(post.upload_date);
     const type = typeLabel(post.media_type);
-    const cat = post.category ? `[${post.category}]` : '';
-    const label = `${date} ${type} ${cat}`.trim();
+    const label = `${date} ${type}`;
     const link = getPostLink(post);
 
     if (link) {
