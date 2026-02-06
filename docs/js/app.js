@@ -1872,14 +1872,36 @@ function renderFollowers() {
   document.getElementById('kpi-avg-growth').textContent = (avgGrowth >= 0 ? '+' : '') + avgGrowth.toFixed(1) + '/일';
   document.getElementById('kpi-current-followers').textContent = fmt(latest.followers);
 
+  // 툴팁 설명 업데이트
+  const tooltipGrowth = document.getElementById('tooltip-total-growth');
+  if (tooltipGrowth) {
+    tooltipGrowth.innerHTML = `<strong>계산식</strong><br>최신(${latest.date}) ${fmt(latest.followers)}명<br>- 시작(${first.date}) ${fmt(first.followers)}명<br>= <strong>${totalGrowth >= 0 ? '+' : ''}${fmt(totalGrowth)}명</strong>`;
+  }
+
+  const tooltipAvg = document.getElementById('tooltip-avg-growth');
+  if (tooltipAvg) {
+    tooltipAvg.innerHTML = `<strong>계산식</strong><br>총 성장 ${fmt(totalGrowth)}명 ÷ ${trackingDays}일<br>= <strong>${avgGrowth >= 0 ? '+' : ''}${avgGrowth.toFixed(1)}명/일</strong>`;
+  }
+
+  const tooltipCurrent = document.getElementById('tooltip-current-followers');
+  if (tooltipCurrent) {
+    tooltipCurrent.innerHTML = `<strong>${latest.date} 기준</strong><br>가장 최근 수집된 팔로워 수`;
+  }
+
   // 최고 성장일 계산
   const changes = allFollowers.map((f, i) => {
-    if (i === 0) return { date: f.date, change: 0 };
-    const change = (f.followers || 0) - (allFollowers[i - 1].followers || 0);
-    return { date: f.date, change };
+    if (i === 0) return { date: f.date, change: 0, prev: 0, cur: f.followers };
+    const prev = allFollowers[i - 1].followers || 0;
+    const cur = f.followers || 0;
+    return { date: f.date, change: cur - prev, prev, cur };
   });
   const best = changes.reduce((a, b) => (b.change > a.change ? b : a), changes[0]);
   document.getElementById('kpi-best-day').textContent = best.date + ' (+' + fmt(best.change) + ')';
+
+  const tooltipBest = document.getElementById('tooltip-best-day');
+  if (tooltipBest) {
+    tooltipBest.innerHTML = `<strong>최고 성장일</strong><br>${best.date}: ${fmt(best.prev)}명 → ${fmt(best.cur)}명<br>하루에 <strong>+${fmt(best.change)}명</strong> 증가`;
+  }
 
   // 년/월 선택기 설정
   setupFollowerMonthSelector(allFollowers);
