@@ -1,18 +1,23 @@
 /* ── Base ── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
-  --bg: #0f1117;
-  --bg2: #1a1d27;
-  --bg3: #252836;
-  --border: #2e3247;
-  --text: #e4e6f0;
-  --text2: #9499b3;
-  --accent: #833AB4;
-  --accent2: #FD1D1D;
-  --accent3: #F77737;
+  /* Flying Japan Brand Colors */
+  --bg: #0a1628;
+  --bg2: #0f1e36;
+  --bg3: #162a4a;
+  --border: #1e3a5f;
+  --text: #e8eef6;
+  --text2: #8fa3bf;
+  --accent: #2E4A9E;
+  --accent2: #4A7FD4;
+  --accent3: #5B8FE8;
   --green: #00c853;
   --red: #ff5252;
-  --blue: #448aff;
+  --blue: #4A7FD4;
+  /* Brand specific */
+  --fj-primary: #2E4A9E;
+  --fj-secondary: #4A7FD4;
+  --fj-light: #5B8FE8;
 }
 body {
   font-family: 'Noto Sans KR', -apple-system, sans-serif;
@@ -33,7 +38,7 @@ body {
 .header h1 {
   font-size: 20px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  background: linear-gradient(135deg, var(--fj-primary), var(--fj-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -49,7 +54,7 @@ body {
   font-family: inherit;
   font-weight: 500;
   color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  background: linear-gradient(135deg, var(--fj-primary), var(--fj-secondary));
   border: none;
   border-radius: 6px;
   text-decoration: none;
@@ -100,7 +105,7 @@ body {
   align-items: center;
   gap: 14px;
   padding: 10px 24px;
-  background: linear-gradient(135deg, rgba(131,58,180,0.08), rgba(247,119,55,0.08));
+  background: linear-gradient(135deg, rgba(46,74,158,0.08), rgba(91,143,232,0.08));
   border-bottom: 1px solid var(--border);
 }
 .milestone-label {
@@ -133,7 +138,7 @@ body {
   border-right: 1px solid var(--border);
 }
 .milestone-btn.active {
-  background: linear-gradient(135deg, var(--accent), var(--accent3));
+  background: linear-gradient(135deg, var(--fj-primary), var(--fj-secondary));
   color: #fff;
   font-weight: 600;
 }
@@ -189,7 +194,7 @@ body {
 .spinner {
   width: 40px; height: 40px;
   border: 3px solid var(--border);
-  border-top-color: var(--accent3);
+  border-top-color: var(--fj-secondary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -263,11 +268,11 @@ body {
 .kpi-stats-grid .kpi-card.dragging {
   opacity: 0.5;
   transform: scale(0.95);
-  box-shadow: 0 4px 20px rgba(247,119,55,0.3);
+  box-shadow: 0 4px 20px rgba(74,127,212,0.3);
 }
 .kpi-stats-grid .kpi-card.drag-over {
   border-color: var(--accent3);
-  box-shadow: 0 0 0 2px rgba(247,119,55,0.3);
+  box-shadow: 0 0 0 2px rgba(74,127,212,0.3);
 }
 /* KPI Mode Dropdown */
 .kpi-mode-dropdown {
@@ -811,7 +816,7 @@ body {
 .sort-dropdown:focus {
   outline: none;
   border-color: var(--accent3);
-  box-shadow: 0 0 0 2px rgba(247,119,55,0.2);
+  box-shadow: 0 0 0 2px rgba(74,127,212,0.2);
 }
 .sort-dropdown option {
   background: var(--bg2);
@@ -1002,7 +1007,7 @@ body {
 
 /* ── Insight Box ── */
 .insight-box {
-  background: linear-gradient(135deg, rgba(131,58,180,0.1), rgba(247,119,55,0.1));
+  background: linear-gradient(135deg, rgba(46,74,158,0.1), rgba(91,143,232,0.1));
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px 20px;
