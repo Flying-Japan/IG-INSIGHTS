@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" fill="white">
+  <!-- Flying Japan Logo - Checkmark + FLYING text -->
+  <g transform="translate(0, 5)">
+    <!-- Checkmark icon -->
+    <path d="M5 18 L12 25 L28 8" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M2 25 L9 32 L18 22" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <!-- FLYING text -->
+  <text x="38" y="28" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="white" letter-spacing="2">FLYING</text>
+</svg>

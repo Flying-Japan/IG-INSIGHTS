@@ -1,25 +1,28 @@
 /* ── Base ── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
-  /* Flying Japan Brand Colors - 플라잉재팬 파란색 테마 */
-  --bg: #1a3a8f;
-  --bg2: #2E4A9E;
-  --bg3: #3d5cb8;
-  --border: rgba(255,255,255,0.15);
-  --text: #ffffff;
-  --text2: rgba(255,255,255,0.7);
-  --text3: rgba(255,255,255,0.5);
-  --accent: #5B8FE8;
-  --accent2: #7BA6F0;
-  --accent3: #ffffff;
-  --green: #4ADE80;
-  --red: #FF6B6B;
-  --blue: #5B8FE8;
+  /* Flying Japan Brand - Light Theme (밝은 테마) */
+  --bg: #ffffff;
+  --bg2: #f5f7fb;
+  --bg3: #eef2f9;
+  --border: #e0e6ef;
+  --text: #1a1a2e;
+  --text2: #5a6785;
+  --text3: #8a95a8;
+  --accent: #2E4A9E;
+  --accent2: #4A7FD4;
+  --accent3: #2E4A9E;
+  --green: #10B981;
+  --red: #EF4444;
+  --blue: #2E4A9E;
   /* Brand specific */
   --fj-primary: #2E4A9E;
   --fj-secondary: #4A7FD4;
   --fj-light: #5B8FE8;
   --fj-dark: #1a3a8f;
+  /* Header (파란색 유지) */
+  --header-bg: #2E4A9E;
+  --header-text: #ffffff;
 }
 body {
   font-family: 'Noto Sans KR', -apple-system, sans-serif;
@@ -34,13 +37,13 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: var(--bg2);
-  border-bottom: 1px solid var(--border);
+  background: var(--header-bg);
+  border-bottom: none;
 }
 .header h1 {
   font-size: 20px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--header-text);
 }
 .header-left {
   display: flex;
@@ -61,7 +64,7 @@ body {
   padding: 6px 14px;
   font-size: 12px;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--fj-primary);
   background: #ffffff;
   border: none;
@@ -114,8 +117,8 @@ body {
   align-items: center;
   gap: 14px;
   padding: 10px 24px;
-  background: rgba(255,255,255,0.05);
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
 }
 .milestone-label {
   font-size: 12px;
@@ -137,8 +140,8 @@ body {
   font-weight: 500;
   font-family: inherit;
   border: none;
-  background: rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.7);
+  background: var(--bg3);
+  color: var(--text2);
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
@@ -147,8 +150,8 @@ body {
   border-right: 1px solid var(--border);
 }
 .milestone-btn.active {
-  background: #ffffff;
-  color: var(--fj-primary);
+  background: var(--fj-primary);
+  color: #ffffff;
   font-weight: 600;
 }
 .milestone-btn:hover:not(.active) {
@@ -183,11 +186,11 @@ body {
   transition: all 0.2s;
   white-space: nowrap;
 }
-.tab-btn:hover { color: #ffffff; }
+.tab-btn:hover { color: var(--text); }
 .tab-btn.active {
-  color: #ffffff;
-  border-bottom-color: #ffffff;
-  font-weight: 500;
+  color: var(--fj-primary);
+  border-bottom-color: var(--fj-primary);
+  font-weight: 600;
 }
 
 /* ── Loading ── */
@@ -333,12 +336,11 @@ body {
   /* handled by JS display toggle */
 }
 .kpi-card {
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
+  background: var(--bg2);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px;
   text-align: center;
-  backdrop-filter: blur(10px);
 }
 .kpi-label {
   font-size: 12px;
@@ -502,12 +504,11 @@ body {
 
 /* ── Performance Summary ── */
 .summary-section {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--bg2);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
-  backdrop-filter: blur(10px);
 }
 .summary-header {
   display: flex;
@@ -605,12 +606,11 @@ body {
   margin-bottom: 16px;
 }
 .chart-box {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--bg2);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px;
   margin-bottom: 16px;
-  backdrop-filter: blur(10px);
 }
 .chart-box h3 {
   font-size: 14px;
@@ -693,12 +693,11 @@ body {
   margin-bottom: 18px;
 }
 .champion-card {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--bg2);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px 16px;
   transition: border-color 0.2s;
-  backdrop-filter: blur(10px);
 }
 .champion-card:hover {
   border-color: var(--accent3);
@@ -861,12 +860,11 @@ body {
 
 /* ── Contribution Section ── */
 .contribution-section {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--bg2);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
-  backdrop-filter: blur(10px);
 }
 .section-header {
   display: flex;
@@ -1021,12 +1019,11 @@ body {
 
 /* ── Insight Box ── */
 .insight-box {
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.2);
+  background: linear-gradient(135deg, rgba(46,74,158,0.05), rgba(91,143,232,0.05));
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px 20px;
   margin-bottom: 16px;
-  backdrop-filter: blur(10px);
 }
 .insight-item {
   font-size: 14px;
@@ -1039,12 +1036,11 @@ body {
 
 /* ── Table Box ── */
 .table-box {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: var(--bg2);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px;
   margin-bottom: 16px;
-  backdrop-filter: blur(10px);
 }
 .table-box h3 {
   font-size: 14px;
