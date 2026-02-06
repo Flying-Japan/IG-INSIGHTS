@@ -1663,13 +1663,20 @@ function showDayPostsModal(dayStats, modeLabel) {
     return `${yy}.${mm}.${dd}.${dayOfWeek}`;
   }
 
-  // 캡션에서 제목 추출 (앞부분 20자)
+  // 제목 추출 (title 필드 우선, 없으면 caption에서)
   function getPostTitleLocal(post) {
+    if (post.title && post.title.trim()) {
+      const title = post.title.trim();
+      if (title.length > 25) {
+        return title.slice(0, 25) + '...';
+      }
+      return title;
+    }
     if (post.caption && post.caption.trim()) {
       const caption = post.caption.trim();
       const firstLine = caption.split('\n')[0].trim();
-      if (firstLine.length > 20) {
-        return firstLine.slice(0, 20) + '...';
+      if (firstLine.length > 25) {
+        return firstLine.slice(0, 25) + '...';
       }
       return firstLine;
     }
@@ -2402,14 +2409,22 @@ function analyzePerformance(posts) {
     return `${yy}.${mm}.${dd}.${dayOfWeek}`;
   }
 
-  // 캡션에서 제목 추출 (앞부분 20자)
+  // 제목 추출 (title 필드 우선, 없으면 caption에서)
   function getPostTitle(post) {
+    // title 필드가 있으면 사용
+    if (post.title && post.title.trim()) {
+      const title = post.title.trim();
+      if (title.length > 25) {
+        return title.slice(0, 25) + '...';
+      }
+      return title;
+    }
+    // caption 필드 fallback
     if (post.caption && post.caption.trim()) {
       const caption = post.caption.trim();
-      // 첫 줄만 또는 20자까지
       const firstLine = caption.split('\n')[0].trim();
-      if (firstLine.length > 20) {
-        return firstLine.slice(0, 20) + '...';
+      if (firstLine.length > 25) {
+        return firstLine.slice(0, 25) + '...';
       }
       return firstLine;
     }
