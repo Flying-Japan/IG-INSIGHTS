@@ -1642,17 +1642,52 @@ function renderDowChartData() {
 function showDayPostsModal(dayStats, modeLabel) {
   const { day, posts, avgReach, avgEng } = dayStats;
 
+  // 날짜 포맷 (YY.MM.DD.요일 형식) - 모달용
+  function formatDateWithDayLocal(dateStr) {
+    if (!dateStr) return '날짜미상';
+    const dayMatch = dateStr.match(/\((.)\)/);
+    const dayOfWeek = dayMatch ? dayMatch[1] : '';
+    let d;
+    if (dateStr.includes('-')) {
+      d = new Date(dateStr.split(' ')[0]);
+    } else {
+      const parts = dateStr.match(/(\d{2})\.(\d{2})\.(\d{2})/);
+      if (parts) {
+        d = new Date(2000 + parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
+      }
+    }
+    if (!d || isNaN(d)) return '날짜미상';
+    const yy = String(d.getFullYear()).slice(-2);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yy}.${mm}.${dd}.${dayOfWeek}`;
+  }
+
+  // 캡션에서 제목 추출 (앞부분 20자)
+  function getPostTitleLocal(post) {
+    if (post.caption && post.caption.trim()) {
+      const caption = post.caption.trim();
+      const firstLine = caption.split('\n')[0].trim();
+      if (firstLine.length > 20) {
+        return firstLine.slice(0, 20) + '...';
+      }
+      return firstLine;
+    }
+    return '';
+  }
+
   // 도달 순으로 정렬
   const sortedPosts = [...posts].sort((a, b) => (b.reach || 0) - (a.reach || 0));
 
   // 모달 HTML 생성
   const postsHtml = sortedPosts.map((p, i) => {
-    const date = p.upload_date ? p.upload_date.split(' ')[0] : '날짜미상';
-    const type = typeLabel(p.media_type);
+    const date = formatDateWithDayLocal(p.upload_date);
+    const title = getPostTitleLocal(p);
+    const label = title ? `${date} / ${title}` : date;
     const link = p.permalink || (p.id ? `https://www.instagram.com/p/${p.id}/` : null);
     const linkHtml = link
-      ? `<a href="${link}" target="_blank" style="color:var(--fj-primary);text-decoration:underline;">${date} ${type}</a>`
-      : `${date} ${type}`;
+      ? `<a href="${link}" target="_blank" style="color:var(--fj-primary);text-decoration:underline;">${label}</a>`
+      : label;
 
     return `
       <tr style="border-bottom:1px solid #eee;">
@@ -2343,18 +2378,49 @@ function analyzePerformance(posts) {
     return null;
   }
 
-  // 날짜 포맷 (M/D 형식)
-  function formatDateShort(dateStr) {
+  // 날짜 포맷 (YY.MM.DD.요일 형식)
+  function formatDateWithDay(dateStr) {
     if (!dateStr) return '날짜미상';
-    const d = new Date(dateStr);
-    return `${d.getMonth() + 1}/${d.getDate()}`;
+    // upload_date 형식: "2025-02-05 00:00:00 (수)" 또는 "25.02.05 (수)"
+    const dayMatch = dateStr.match(/\((.)\)/);
+    const dayOfWeek = dayMatch ? dayMatch[1] : '';
+
+    let d;
+    if (dateStr.includes('-')) {
+      d = new Date(dateStr.split(' ')[0]);
+    } else {
+      const parts = dateStr.match(/(\d{2})\.(\d{2})\.(\d{2})/);
+      if (parts) {
+        d = new Date(2000 + parseInt(parts[1]), parseInt(parts[2]) - 1, parseInt(parts[3]));
+      }
+    }
+    if (!d || isNaN(d)) return '날짜미상';
+
+    const yy = String(d.getFullYear()).slice(-2);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yy}.${mm}.${dd}.${dayOfWeek}`;
   }
 
-  // 게시물 식별 + 링크 HTML 생성 (날짜 + 콘텐츠 타입만)
+  // 캡션에서 제목 추출 (앞부분 20자)
+  function getPostTitle(post) {
+    if (post.caption && post.caption.trim()) {
+      const caption = post.caption.trim();
+      // 첫 줄만 또는 20자까지
+      const firstLine = caption.split('\n')[0].trim();
+      if (firstLine.length > 20) {
+        return firstLine.slice(0, 20) + '...';
+      }
+      return firstLine;
+    }
+    return '';
+  }
+
+  // 게시물 식별 + 링크 HTML 생성 (날짜 / 제목 형식)
   function getPostIdentifierWithLink(post) {
-    const date = formatDateShort(post.upload_date);
-    const type = typeLabel(post.media_type);
-    const label = `${date} ${type}`;
+    const date = formatDateWithDay(post.upload_date);
+    const title = getPostTitle(post);
+    const label = title ? `${date} / ${title}` : date;
     const link = getPostLink(post);
 
     if (link) {
