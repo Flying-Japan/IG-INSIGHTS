@@ -1435,66 +1435,184 @@ body {
 
 /* ── 모바일 (768px 이하) ── */
 @media (max-width: 768px) {
-  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-  .kpi-grid-3 { grid-template-columns: repeat(2, 1fr); }
+  /* KPI 카드: 3열 그리드로 변경 */
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .kpi-grid-3 { grid-template-columns: repeat(3, 1fr); }
   .kpi-grid-4 { grid-template-columns: repeat(2, 1fr); }
-  .kpi-grid-5 { grid-template-columns: repeat(2, 1fr); }
-  .kpi-grid-7 { grid-template-columns: repeat(2, 1fr); }
-  .chart-grid { grid-template-columns: 1fr; }
-  .header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
-  .header h1 { font-size: 16px; }
-  .header-brand { font-size: 14px; }
-  .container { padding: 12px 16px; }
-  .tab-btn { padding: 8px 12px; font-size: 12px; }
-  .tab-nav { overflow-x: auto; white-space: nowrap; }
+  .kpi-grid-5 { grid-template-columns: repeat(3, 1fr); }
+  .kpi-grid-7 { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .kpi-stats-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+  .kpi-card {
+    padding: 10px 6px;
+    border-radius: 12px;
+  }
+  .kpi-label {
+    font-size: 9px;
+    margin-bottom: 4px;
+    letter-spacing: 0;
+  }
+  .kpi-value {
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .kpi-stats-grid .kpi-value {
+    font-size: 14px;
+    line-height: 1.2;
+  }
+  .kpi-change {
+    font-size: 10px;
+    padding: 2px 5px;
+    display: block;
+    margin-left: 0;
+    margin-top: 4px;
+  }
+  .kpi-grade { font-size: 8px; padding: 1px 4px; margin-left: 2px; }
+
+  /* 헤더 */
+  .header { padding: 10px 12px; gap: 6px; }
+  .header h1 { font-size: 15px; }
+  .header-brand { font-size: 11px; }
+  .header-divider { margin: 0 4px; }
+  .header-right { gap: 8px; }
+  .update-btn { font-size: 10px; padding: 4px 8px; }
+  .update-time { font-size: 10px; }
+
+  /* 컨테이너 */
+  .container { padding: 12px; }
+  .chart-grid { grid-template-columns: 1fr; gap: 12px; }
+  .chart-box { padding: 14px; margin-bottom: 12px; }
+  .chart-box h3 { font-size: 13px; margin-bottom: 10px; }
+
+  /* 탭 */
+  .tab-btn { padding: 10px 14px; font-size: 12px; }
+  .tab-nav { overflow-x: auto; white-space: nowrap; padding: 0 12px; }
+
   /* 운영 기여도 모바일 레이아웃 */
+  .contribution-section { padding: 16px 12px; }
+  .section-header h3 { font-size: 14px; }
+  .section-sub { font-size: 10px; }
+  .contribution-grid { gap: 16px; }
   .contrib-row-top {
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    gap: 8px;
     max-width: 100%;
   }
   .contrib-row-rest {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
     max-width: 100%;
   }
-  .contrib-item { padding: 14px 10px; }
-  .contrib-highlight { padding: 16px 12px; }
-  .contrib-label { font-size: 13px; }
-  .contrib-highlight .contrib-label { font-size: 14px; }
-  .contrib-detail { font-size: 11px; }
-  .contrib-badge { font-size: 10px; padding: 3px 10px; }
-  .milestone-bar { flex-wrap: wrap; padding: 8px 16px; gap: 8px; }
-  .milestone-btn { padding: 5px 10px; font-size: 11px; }
-  .milestone-date { font-size: 10px; }
-  .follower-banner { padding: 8px 16px; gap: 8px; font-size: 11px; }
-  .fb-current { font-size: 12px; }
-  .fb-current strong { font-size: 13px; }
-  .filter-bar { flex-wrap: wrap; gap: 8px; }
-  .filter-bar select, .filter-bar input { font-size: 12px; min-width: 0; flex: 1; }
-  .kpi-card { padding: 12px; }
-  .kpi-value { font-size: 20px; }
-  .summary-grid { grid-template-columns: 1fr; }
+  .contrib-item {
+    padding: 10px 6px;
+    border-radius: 12px;
+    border-width: 1px;
+  }
+  .contrib-highlight {
+    padding: 12px 8px;
+    border-radius: 14px;
+  }
+  .contrib-label { font-size: 11px; margin-bottom: 4px; }
+  .contrib-highlight .contrib-label { font-size: 12px; }
+  .contrib-detail { font-size: 9px; }
+  .contrib-badge { font-size: 9px; padding: 2px 8px; margin-top: 6px; }
+  .contrib-chart { margin-bottom: 6px; }
+
+  /* 마일스톤 바 */
+  .milestone-bar { flex-wrap: wrap; padding: 8px 12px; gap: 6px; }
+  .milestone-label { font-size: 10px; }
+  .milestone-btn { padding: 4px 8px; font-size: 10px; }
+  .milestone-date { font-size: 9px; }
+
+  /* 팔로워 배너 */
+  .follower-banner { padding: 6px 12px; gap: 6px; font-size: 10px; }
+  .fb-current { font-size: 11px; }
+  .fb-current strong { font-size: 12px; }
+
+  /* 필터바 */
+  .filter-bar { flex-wrap: wrap; gap: 6px; }
+  .filter-bar select, .filter-bar input { font-size: 11px; min-width: 0; flex: 1; }
+
+  /* 요약 섹션 */
+  .summary-section { padding: 14px; }
+  .summary-header h3 { font-size: 14px; }
+  .summary-grid { grid-template-columns: 1fr; gap: 10px; }
+  .summary-card { padding: 12px; }
+  .summary-card h4 { font-size: 12px; }
+  .summary-list li { font-size: 11px; }
+  .summary-overview { gap: 6px; }
+  .summary-stat { padding: 8px 10px; min-width: 70px; }
+  .summary-stat-label { font-size: 8px; }
+  .summary-stat-value { font-size: 14px; }
+
+  /* 인사이트 박스 */
+  .insight-box { padding: 12px 14px; }
+  .insight-item { font-size: 12px; line-height: 1.6; }
+
+  /* 챔피언 카드 */
+  .metric-champions { gap: 10px; }
+  .champion-card { padding: 12px 14px; }
+  .champion-card h4 { font-size: 11px; margin-bottom: 8px; }
+  .champion-value { font-size: 20px; }
+  .champion-title { font-size: 11px; }
+  .champion-category { font-size: 9px; padding: 2px 6px; }
 }
 
 /* ── 소형 모바일 (480px 이하) ── */
 @media (max-width: 480px) {
-  .kpi-grid-7 { grid-template-columns: 1fr; }
-  .kpi-grid { grid-template-columns: 1fr; }
+  /* KPI 카드: 2열로 변경 */
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .kpi-grid-7 { grid-template-columns: repeat(2, 1fr); }
+  .kpi-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .kpi-card { padding: 12px 8px; }
+  .kpi-label { font-size: 10px; }
+  .kpi-value { font-size: 18px; }
+  .kpi-stats-grid .kpi-value { font-size: 16px; }
+
+  /* 헤더 */
   .header-right { flex-wrap: wrap; justify-content: flex-end; }
-  .header-brand { font-size: 12px; }
+  .header-brand { font-size: 10px; }
   .header h1 { font-size: 14px; }
-  .update-btn { font-size: 11px; padding: 4px 8px; }
-  .update-time { font-size: 11px; }
+  .update-btn { font-size: 9px; padding: 3px 6px; }
+  .update-time { display: none; }
+
   /* 운영 기여도 소형 모바일 */
   .contrib-row-top {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
   }
   .contrib-row-rest {
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 6px;
   }
-  .contrib-highlight { padding: 20px 16px; }
-  .contrib-item { min-width: 0; }
+  .contrib-highlight { padding: 14px 10px; }
+  .contrib-item { min-width: 0; padding: 10px 6px; }
+  .contrib-label { font-size: 10px; }
+  .contrib-highlight .contrib-label { font-size: 11px; }
+  .contrib-detail { font-size: 8px; }
+
+  /* 차트 */
+  .chart-box { padding: 12px; border-radius: 12px; }
+  .chart-box h3 { font-size: 12px; }
+
+  /* 요약 */
+  .summary-section { padding: 12px; }
+  .summary-header h3 { font-size: 13px; }
+  .summary-stat { padding: 6px 8px; }
+  .summary-stat-value { font-size: 13px; }
+
+  /* 테이블 */
+  .table-box { padding: 12px; }
+  .table-box h3 { font-size: 12px; }
+  .tabulator { font-size: 11px !important; }
+  .tabulator .tabulator-header .tabulator-col-content { padding: 8px 6px !important; }
+  .tabulator .tabulator-cell { padding: 6px !important; }
+
+  /* 인사이트 */
+  .insight-box { padding: 10px 12px; }
+  .insight-item { font-size: 11px; }
+
+  /* 모달 */
+  .modal-content { padding: 16px; max-width: 95%; }
+  .modal-title { font-size: 14px; }
+  .modal-stats { grid-template-columns: repeat(2, 1fr); }
 }
