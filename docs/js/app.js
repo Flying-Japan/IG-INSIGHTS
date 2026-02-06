@@ -139,17 +139,26 @@ function followChangeBadge(label, data) {
 function renderFollowerBanner() {
   const banner = document.getElementById('follower-banner');
   if (!banner) return;
-  const posts = DATA.posts || [];
   const followers = DATA.followers || [];
-  const changes = calcFollowsChanges(posts, followers);
-  if (!changes) { banner.style.display = 'none'; return; }
+  if (!followers.length) { banner.style.display = 'none'; return; }
+
+  const latest = followers[followers.length - 1];
+  const currentFollowers = latest.followers || 0;
+
+  // 전일 대비 팔로워 변화
+  let changeHtml = '';
+  if (followers.length >= 2) {
+    const prev = followers[followers.length - 2].followers || 0;
+    const diff = currentFollowers - prev;
+    const sign = diff >= 0 ? '+' : '';
+    const cls = diff > 0 ? 'positive' : diff < 0 ? 'negative' : '';
+    changeHtml = `<span class="fb-section-label">전일대비</span><span class="fc-item ${cls}"><span class="fc-val">${sign}${fmt(diff)}</span></span>`;
+  }
 
   banner.style.display = '';
-  const currentHtml = changes.current ? `<span class="fb-current">👥 팔로워 <strong>${fmt(changes.current)}</strong></span><span class="fb-divider">|</span>` : '';
   banner.innerHTML =
-    currentHtml +
-    `<span class="fb-section-label">팔로우 유입</span>` +
-    followChangeBadge('전일', changes.daily);
+    `<span class="fb-current">👥 팔로워 <strong>${fmt(currentFollowers)}</strong></span>` +
+    (changeHtml ? `<span class="fb-divider">|</span>${changeHtml}` : '');
 }
 
 // ── Milestone Filter ──
