@@ -1,10 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" fill="white">
-  <!-- Flying Japan Logo - Checkmark + FLYING text -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 50">
+  <!-- Flying Japan Logo - 체크마크 -->
   <g transform="translate(0, 5)">
-    <!-- Checkmark icon -->
-    <path d="M5 18 L12 25 L28 8" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M2 25 L9 32 L18 22" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- 큰 체크 -->
+    <path d="M8 22 L18 32 L42 6" stroke="white" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- 작은 체크 -->
+    <path d="M2 32 L12 42 L26 26" stroke="white" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <!-- FLYING text -->
-  <text x="38" y="28" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="white" letter-spacing="2">FLYING</text>
+  <!-- FLYING 텍스트 -->
+  <g fill="white" font-family="Arial, sans-serif" font-weight="bold">
+    <!-- F -->
+    <path d="M60 10 L60 40 L68 40 L68 28 L85 28 L85 22 L68 22 L68 16 L88 16 L88 10 Z"/>
+    <!-- L -->
+    <path d="M95 10 L95 40 L120 40 L120 34 L103 34 L103 10 Z"/>
+    <!-- Y -->
+    <path d="M125 10 L135 24 L145 10 L154 10 L140 28 L140 40 L132 40 L132 28 L118 10 Z"/>
+    <!-- I -->
+    <path d="M160 10 L168 10 L168 40 L160 40 Z"/>
+    <!-- N -->
+    <path d="M175 10 L183 10 L183 28 L200 10 L208 10 L208 40 L200 40 L200 22 L183 40 L175 40 Z"/>
+    <!-- G -->
+    <path d="M215 10 L245 10 L245 16 L223 16 L223 34 L237 34 L237 28 L230 28 L230 22 L245 22 L245 40 L215 40 Z"/>
+  </g>
 </svg>

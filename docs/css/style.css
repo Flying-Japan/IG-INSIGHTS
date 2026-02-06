@@ -12,8 +12,8 @@
   --accent: #2E4A9E;
   --accent2: #4A7FD4;
   --accent3: #2E4A9E;
-  --green: #10B981;
-  --red: #EF4444;
+  --green: #059669;
+  --red: #DC2626;
   --blue: #2E4A9E;
   /* Brand specific */
   --fj-primary: #2E4A9E;
@@ -82,30 +82,31 @@ body {
 }
 .update-time {
   font-size: 13px;
-  color: var(--text2);
+  color: rgba(255,255,255,0.8);
 }
 
 /* ── KPI Change Indicators ── */
 .kpi-change {
   display: inline-block;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 1px 5px;
-  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
   margin-left: 4px;
   vertical-align: middle;
 }
 .kpi-change.positive {
-  color: var(--green);
-  background: rgba(0, 200, 83, 0.12);
+  color: #ffffff;
+  background: var(--green);
 }
 .kpi-change.negative {
-  color: var(--red);
-  background: rgba(255, 82, 82, 0.12);
+  color: #ffffff;
+  background: var(--red);
 }
 /* Post table inline change */
 .cell-change {
   font-size: 0.85em;
+  font-weight: 600;
   margin-left: 2px;
 }
 .cell-change.positive { color: var(--green); }
@@ -1052,26 +1053,50 @@ body {
 /* ── Tabulator Overrides ── */
 .tabulator {
   background: transparent !important;
-  border: none !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
   font-size: 13px !important;
+  overflow: hidden !important;
 }
 .tabulator .tabulator-header {
-  background: var(--bg3) !important;
-  border-bottom: 1px solid var(--border) !important;
+  background: var(--fj-primary) !important;
+  border-bottom: none !important;
+}
+.tabulator .tabulator-header .tabulator-col {
+  background: transparent !important;
+  border-right: 1px solid rgba(255,255,255,0.2) !important;
+}
+.tabulator .tabulator-header .tabulator-col-content {
+  color: #ffffff !important;
+}
+.tabulator .tabulator-header .tabulator-col-title {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable .tabulator-col-title {
+  color: #ffffff !important;
+}
+.tabulator .tabulator-header .tabulator-arrow {
+  border-bottom-color: #ffffff !important;
 }
 .tabulator .tabulator-col {
   background: transparent !important;
   border-right: 1px solid var(--border) !important;
 }
 .tabulator .tabulator-row {
-  background: transparent !important;
-  border-bottom: 1px solid rgba(46,50,71,0.5) !important;
+  background: var(--bg) !important;
+  border-bottom: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+.tabulator .tabulator-row:nth-child(even) {
+  background: var(--bg2) !important;
 }
 .tabulator .tabulator-row:hover {
   background: var(--bg3) !important;
 }
 .tabulator .tabulator-cell {
-  border-right: 1px solid rgba(46,50,71,0.3) !important;
+  border-right: 1px solid var(--border) !important;
+  color: var(--text) !important;
 }
 
 /* ── Post Diagnosis Modal ── */
@@ -1295,12 +1320,12 @@ body {
 }
 .no-yesterday-notice::before { content: 'ⓘ'; }
 
-/* ── 페이지네이션 다크 테마 ── */
+/* ── 페이지네이션 라이트 테마 ── */
 .tabulator .tabulator-footer { background: var(--bg2); border-top: 1px solid var(--border); color: var(--text); }
-.tabulator .tabulator-footer .tabulator-page { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 4px 10px; border-radius: 4px; }
-.tabulator .tabulator-footer .tabulator-page.active { background: var(--accent3); color: #fff; border-color: var(--accent3); }
-.tabulator .tabulator-footer .tabulator-page:hover:not(.active) { background: var(--border); color: var(--text); }
-.tabulator .tabulator-footer .tabulator-page-size { background: var(--bg3); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 4px 8px; }
+.tabulator .tabulator-footer .tabulator-page { background: var(--bg); border: 1px solid var(--border); color: var(--text2); padding: 4px 10px; border-radius: 4px; }
+.tabulator .tabulator-footer .tabulator-page.active { background: var(--fj-primary); color: #fff; border-color: var(--fj-primary); }
+.tabulator .tabulator-footer .tabulator-page:hover:not(.active) { background: var(--bg3); color: var(--text); }
+.tabulator .tabulator-footer .tabulator-page-size { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 4px 8px; }
 .tabulator .tabulator-footer .tabulator-pages { gap: 2px; }
 
 /* ── 팔로워 월 선택 컨트롤 ── */
